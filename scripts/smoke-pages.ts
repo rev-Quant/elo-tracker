@@ -1,7 +1,7 @@
 /** Renders the authenticated pages and asserts real data reaches the HTML. */
 export {};
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.SMOKE_BASE_URL ?? "http://localhost:3000";
 const stamp = Date.now();
 
 const cookies = new Map<string, string>();
