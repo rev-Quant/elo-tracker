@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { inArray, like, or } from "drizzle-orm";
 import { closeDb, db } from "../src/db";
-import { groups, users } from "../src/db/schema";
+import { games, groups, users } from "../src/db/schema";
 
 /**
  * Removes rows created by scripts/smoke.ts and scripts/smoke-pages.ts.
  *
- * Groups are deleted first: matches, participants, ratings, snapshots and
- * memberships all cascade from them, which frees the users to be deleted.
+ * Order matters: groups cascade to matches/participants/ratings/snapshots,
+ * which frees both the users and the custom games to be deleted.
  */
 async function main() {
   const testUsers = await db
@@ -24,13 +24,32 @@ async function main() {
   const testGroups = await db
     .select({ id: groups.id, name: groups.name })
     .from(groups)
-    .where(or(like(groups.name, "Smoke Group %"), like(groups.name, "Page Group %")));
+    .where(
+      or(
+        like(groups.name, "Smoke Group %"),
+        like(groups.name, "Page Group %"),
+        like(groups.name, "Renamed %"),
+      ),
+    );
 
   if (testGroups.length > 0) {
     await db.delete(groups).where(
       inArray(
         groups.id,
         testGroups.map((g) => g.id),
+      ),
+    );
+  }
+
+  const testGames = await db
+    .select({ id: games.id })
+    .from(games)
+    .where(like(games.name, "Smoke Teams %"));
+  if (testGames.length > 0) {
+    await db.delete(games).where(
+      inArray(
+        games.id,
+        testGames.map((g) => g.id),
       ),
     );
   }
@@ -44,7 +63,9 @@ async function main() {
     );
   }
 
-  console.log(`Removed ${testGroups.length} test groups and ${testUsers.length} test users.`);
+  console.log(
+    `Removed ${testGroups.length} test groups, ${testGames.length} test games and ${testUsers.length} test users.`,
+  );
 }
 
 main()

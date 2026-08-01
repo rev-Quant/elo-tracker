@@ -124,6 +124,26 @@ export default async function ProfilePage({ params }: Props) {
         </section>
       ) : null}
 
+      {data.badges.length > 0 ? (
+        <section className="mb-6">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            Achievements
+          </h2>
+          <Card>
+            <ul className="flex flex-wrap gap-3">
+              {data.badges.map((b) => (
+                <li key={b.id} className="flex items-center gap-1.5 text-sm" title={b.label}>
+                  <span aria-hidden className="text-lg">
+                    {b.emoji}
+                  </span>
+                  <span className="text-muted">{b.label}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      ) : null}
+
       {data.recentMatches.length > 0 ? (
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">

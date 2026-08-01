@@ -78,6 +78,7 @@ export default async function LogMatchPage({ params }: { params: Promise<{ slug:
           minPlayers: g.minPlayers,
           maxPlayers: g.maxPlayers,
           supportsFfa: g.supportsFfa,
+          supportsTeams: g.supportsTeams,
           rankingMode: g.rankingMode,
         }))}
         members={members.map((m) => ({ userId: m.userId, displayName: m.displayName }))}

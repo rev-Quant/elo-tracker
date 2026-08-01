@@ -71,7 +71,14 @@ async function main() {
   const { games } = await anon.get<{ games: { id: string; name: string; slug: string }[] }>(
     "/api/games",
   );
-  check("game catalog is seeded with 8 games", games.length === 8, games.length);
+  // The catalog also contains any custom games users have added, so assert the
+  // seeded eight are present rather than pinning an exact count.
+  const seeded = ["sequence", "monopoly-deal", "pool-8-ball", "catan", "codenames", "chess", "coup", "ticket-to-ride"];
+  check(
+    "seeded game catalog is present",
+    seeded.every((s) => games.some((g) => g.slug === s)),
+    games.map((g) => g.slug),
+  );
   const chess = games.find((g) => g.slug === "chess")!;
   const monopolyDeal = games.find((g) => g.slug === "monopoly-deal")!;
   check("chess is present", !!chess);
@@ -217,6 +224,64 @@ async function main() {
     hidden = String(err).includes("404");
   }
   check("a private group 404s for non-members", hidden);
+
+  // --- Phase 2: custom games, teams, undo, settings, roundup ---------------
+  const { game: custom } = await alice.post<{ game: { id: string; slug: string; supportsTeams: boolean } }>(
+    "/api/games",
+    { name: `Smoke Teams ${stamp}`, minPlayers: 2, supportsFfa: false, supportsTeams: true, rankingMode: "full" },
+  );
+  check("custom game created", custom.supportsTeams === true);
+
+  const bobUserId = await bobId(bob);
+  const teamMatch = await alice.post<{
+    match: { id: string; numTeams: number };
+    participants: { userId: string; finalRank: number; ratingDelta: number }[];
+  }>(`/api/groups/${group.slug}/matches`, {
+    gameId: custom.id,
+    matchType: "competitive",
+    teamMode: "teams",
+    teams: [
+      { name: "Team A", rank: 1, userIds: [registered.user.id, guest.id] },
+      { name: "Team B", rank: 2, userIds: [bobUserId] },
+    ],
+    idempotencyKey: crypto.randomUUID(),
+  });
+  check("team match records 2 teams", teamMatch.match.numTeams === 2);
+  check(
+    "both winning teammates gain rating",
+    teamMatch.participants.filter((p) => p.finalRank === 1).every((p) => p.ratingDelta > 0),
+    teamMatch.participants,
+  );
+
+  const undone = await alice.call<{ match: { status: string } }>(
+    "DELETE",
+    `/api/matches/${teamMatch.match.id}`,
+  );
+  check("undo voids the match", undone.match.status === "voided");
+
+  const patched = await alice.call<{ group: { name: string; isPublic: boolean } }>(
+    "PATCH",
+    `/api/groups/${group.slug}`,
+    { name: `Renamed ${stamp}`, isPublic: true },
+  );
+  check("group settings update", patched.group.name === `Renamed ${stamp}` && patched.group.isPublic);
+
+  const rotated = await alice.post<{ inviteCode: string }>(`/api/groups/${group.slug}/invite`);
+  check("invite code rotates", rotated.inviteCode !== group.inviteCode);
+
+  const report = await alice.get<{ totalMatches: number; mostWins: { wins: number } | null }>(
+    `/api/groups/${group.slug}/roundup`,
+  );
+  check("roundup counts this week's matches", report.totalMatches >= 2, report.totalMatches);
+
+  const profileWithBadges = await alice.get<{ badges: { id: string }[] }>(
+    `/api/users/${registered.user.id}/profile?group=${group.slug}`,
+  );
+  check(
+    "profile awards the first_win badge",
+    profileWithBadges.badges.some((b) => b.id === "first_win"),
+    profileWithBadges.badges,
+  );
 
   console.log(`\n${passed} checks passed${process.exitCode ? " (with failures above)" : ""}`);
 }

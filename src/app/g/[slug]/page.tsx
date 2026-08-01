@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Card, EmptyState, LinkButton } from "@/components/ui";
+import { VoidButton } from "@/components/match-actions";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -56,6 +57,10 @@ export default async function GroupPage({ params, searchParams }: Props) {
           Settings
         </Link>
       </header>
+
+      <Link href={`/g/${slug}/roundup`} className="mb-5 block text-sm text-accent hover:underline">
+        📋 This week&apos;s roundup →
+      </Link>
 
       {can(role, "log_match") ? (
         <LinkButton href={`/g/${slug}/log`} className="mb-5">
@@ -152,6 +157,7 @@ export default async function GroupPage({ params, searchParams }: Props) {
                         day: "numeric",
                       })}
                     </time>
+                    {can(role, "void_matches") ? <VoidButton matchId={match.id} /> : null}
                   </li>
                 );
               })}

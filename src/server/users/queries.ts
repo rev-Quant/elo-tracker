@@ -2,6 +2,7 @@ import { aliasedTable, and, desc, eq, ne, sql } from "drizzle-orm";
 import { type Queryable, db as defaultDb } from "@/db";
 import { currentRatings, games, matchParticipants, matches, users } from "@/db/schema";
 import { NotFoundError } from "@/lib/errors";
+import { type Badge, computeBadges } from "./badges";
 
 /** Profile page reads. Spec §7. */
 
@@ -43,6 +44,7 @@ export interface Profile {
   nemesis: HeadToHead | null;
   /** Best record against (spec §7 "Prey"). */
   prey: HeadToHead | null;
+  badges: Badge[];
 }
 
 export async function profile(
@@ -63,10 +65,11 @@ export async function profile(
 
   if (!user) throw new NotFoundError("That player doesn't exist.");
 
-  const [gameStats, recentMatches, h2h] = await Promise.all([
+  const [gameStats, recentMatches, h2h, badges] = await Promise.all([
     breakdown(userId, groupId, db),
     recent(userId, groupId, db),
     headToHead(userId, groupId, db),
+    computeBadges(userId, groupId, db),
   ]);
 
   // Only opponents actually faced more than once are interesting enough to
@@ -83,6 +86,7 @@ export async function profile(
       byMargin.length > 0 && byMargin[byMargin.length - 1].wins > byMargin[byMargin.length - 1].losses
         ? byMargin[byMargin.length - 1]
         : null,
+    badges,
   };
 }
 

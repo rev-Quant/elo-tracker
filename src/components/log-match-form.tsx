@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button, Card, Delta, ErrorBanner } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
+import { UndoButton } from "@/components/match-actions";
 
 export interface GameOption {
   id: string;
@@ -11,6 +12,7 @@ export interface GameOption {
   minPlayers: number;
   maxPlayers: number | null;
   supportsFfa: boolean;
+  supportsTeams: boolean;
   rankingMode: "full" | "winner_only" | "top_n";
 }
 
@@ -20,6 +22,7 @@ export interface MemberOption {
 }
 
 interface LoggedResult {
+  match: { id: string };
   participants: {
     userId: string;
     displayName: string;
@@ -29,11 +32,11 @@ interface LoggedResult {
 }
 
 /**
- * The 15-second logging flow (spec §3).
+ * The 15-second logging flow (spec Â§3).
  *
  * Ordering uses explicit move buttons rather than drag handles. Drag-and-drop
  * that works reliably on touch needs a dependency and a keyboard-accessible
- * fallback; ▲▼ is instantly usable, screen-reader friendly, and about as fast
+ * fallback; â–²â–¼ is instantly usable, screen-reader friendly, and about as fast
  * for the 2-6 players a typical match has.
  */
 export function LogMatchForm({
@@ -52,7 +55,7 @@ export function LogMatchForm({
   const router = useRouter();
 
   const [gameId, setGameId] = useState(defaultGameId ?? games[0]?.id ?? "");
-  // Aggressive defaulting: same game, same people as last time (spec §3).
+  // Aggressive defaulting: same game, same people as last time (spec Â§3).
   const [order, setOrder] = useState<string[]>(
     defaultParticipantIds.length > 0 ? defaultParticipantIds : members.slice(0, 2).map((m) => m.userId),
   );
@@ -68,9 +71,56 @@ export function LogMatchForm({
   const [guestName, setGuestName] = useState("");
   const [addingGuest, setAddingGuest] = useState(false);
 
+  // Team mode. Two buckets is what a table actually negotiates (spec Â§3);
+  // the API accepts up to 8 teams if a richer UI is ever needed.
+  const [mode, setMode] = useState<"ffa" | "teams">("ffa");
+  const [teamA, setTeamA] = useState<string[]>([]);
+  const [winningTeam, setWinningTeam] = useState<"A" | "B">("A");
+
+  // Custom games added mid-flow (spec §12), appended locally like guests.
+  const [extraGames, setExtraGames] = useState<GameOption[]>([]);
+  const [addingGame, setAddingGame] = useState(false);
+  const [newGameName, setNewGameName] = useState("");
+  const [newGameTeams, setNewGameTeams] = useState(false);
+
+  async function addGame(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = newGameName.trim();
+    if (!name) return;
+    setPending(true);
+    setError(null);
+    try {
+      const { game: created } = await api.post<{ game: GameOption }>("/api/games", {
+        name,
+        minPlayers: 2,
+        supportsFfa: !newGameTeams,
+        supportsTeams: newGameTeams,
+        rankingMode: "full",
+      });
+      setExtraGames((current) => [...current, created]);
+      setGameId(created.id);
+      setNewGameName("");
+      setNewGameTeams(false);
+      setAddingGame(false);
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't add that game.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const roster = useMemo(() => [...members, ...extraMembers], [members, extraMembers]);
-  const game = games.find((g) => g.id === gameId) ?? null;
+  const game = [...games, ...extraGames].find((g) => g.id === gameId) ?? null;
   const winnerOnly = game?.rankingMode === "winner_only";
+  // A teams-only game (Pool, Codenames) forces team mode; an FFA-only game
+  // forces FFA. The toggle only matters when the game supports both.
+  const effectiveMode: "ffa" | "teams" = !game
+    ? "ffa"
+    : !game.supportsFfa
+      ? "teams"
+      : !game.supportsTeams
+        ? "ffa"
+        : mode;
   const byId = useMemo(() => new Map(roster.map((m) => [m.userId, m])), [roster]);
 
   async function addGuest(event: React.FormEvent<HTMLFormElement>) {
@@ -114,25 +164,55 @@ export function LogMatchForm({
     });
   }
 
+  /** Shuffle the selected players into two even buckets (spec Â§3). */
+  function randomTeams() {
+    const shuffled = [...order];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const half = Math.ceil(shuffled.length / 2);
+    setTeamA(shuffled.slice(0, half));
+  }
+
+  const teamAList = order.filter((id) => teamA.includes(id));
+  const teamBList = order.filter((id) => !teamA.includes(id));
+
   const countError =
     game && order.length < game.minPlayers
       ? `${game.name} needs at least ${game.minPlayers} players.`
       : game?.maxPlayers && order.length > game.maxPlayers
         ? `${game.name} supports at most ${game.maxPlayers} players.`
-        : null;
+        : effectiveMode === "teams" && (teamAList.length === 0 || teamBList.length === 0)
+          ? "Both teams need at least one player."
+          : null;
 
   async function submit() {
     setPending(true);
     setError(null);
     try {
-      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, {
-        gameId,
-        matchType,
-        teamMode: "ffa",
-        participants: order.map((userId, index) => ({ userId, rank: index + 1 })),
-        // Lets a retry after a flaky connection not double-log (spec §10).
-        idempotencyKey: crypto.randomUUID(),
-      });
+      const body =
+        effectiveMode === "teams"
+          ? {
+              gameId,
+              matchType,
+              teamMode: "teams" as const,
+              teams: [
+                { name: "Team A", rank: winningTeam === "A" ? 1 : 2, userIds: teamAList },
+                { name: "Team B", rank: winningTeam === "B" ? 1 : 2, userIds: teamBList },
+              ],
+              idempotencyKey: crypto.randomUUID(),
+            }
+          : {
+              gameId,
+              matchType,
+              teamMode: "ffa" as const,
+              participants: order.map((userId, index) => ({ userId, rank: index + 1 })),
+              // Lets a retry after a flaky connection not double-log (spec Â§10).
+              idempotencyKey: crypto.randomUUID(),
+            };
+
+      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
       setResult(payload);
       router.refresh();
     } catch (err) {
@@ -157,6 +237,7 @@ export function LogMatchForm({
             ))}
           </ul>
         </Card>
+        <UndoButton matchId={result.match.id} onUndone={() => setResult(null)} />
         <Button onClick={() => router.push(`/g/${slug}`)}>Back to standings</Button>
         <Button variant="secondary" onClick={() => setResult(null)}>
           Log another
@@ -170,7 +251,7 @@ export function LogMatchForm({
       <section>
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Game</h2>
         <div className="flex flex-wrap gap-2">
-          {games.map((g) => (
+          {[...games, ...extraGames].map((g) => (
             <button
               key={g.id}
               type="button"
@@ -184,7 +265,49 @@ export function LogMatchForm({
               {g.name}
             </button>
           ))}
+          {addingGame ? null : (
+            <button
+              type="button"
+              onClick={() => setAddingGame(true)}
+              className="rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-muted hover:text-text"
+            >
+              + Custom game
+            </button>
+          )}
         </div>
+
+        {addingGame ? (
+          <form onSubmit={addGame} className="mt-2 space-y-2 rounded-xl border border-border p-3">
+            <input
+              value={newGameName}
+              onChange={(e) => setNewGameName(e.target.value)}
+              placeholder="Game name"
+              autoFocus
+              className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <label className="flex items-center gap-2 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={newGameTeams}
+                onChange={(e) => setNewGameTeams(e.target.checked)}
+              />
+              Played in teams
+            </label>
+            <div className="flex gap-2">
+              <Button type="submit" variant="secondary" className="w-auto px-4" disabled={pending}>
+                Add game
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-auto px-4"
+                onClick={() => setAddingGame(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </section>
 
       <section>
@@ -238,7 +361,81 @@ export function LogMatchForm({
         ) : null}
       </section>
 
-      {order.length > 0 ? (
+      {game?.supportsTeams && game?.supportsFfa ? (
+        <div className="flex gap-2">
+          {(["ffa", "teams"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`flex-1 rounded-xl border px-3 py-2 text-sm transition ${
+                mode === m ? "border-accent bg-accent/10 text-accent" : "border-border text-muted"
+              }`}
+            >
+              {m === "ffa" ? "Free-for-all" : "Teams"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {order.length > 0 && effectiveMode === "teams" ? (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Teams</h2>
+            <button type="button" onClick={randomTeams} className="text-sm text-accent hover:underline">
+              Random teams
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(["A", "B"] as const).map((side) => {
+              const list = side === "A" ? teamAList : teamBList;
+              return (
+                <button
+                  key={side}
+                  type="button"
+                  onClick={() => setWinningTeam(side)}
+                  className={`rounded-2xl border p-3 text-left transition ${
+                    winningTeam === side ? "border-accent bg-accent/10" : "border-border bg-surface"
+                  }`}
+                >
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                    Team {side} {winningTeam === side ? "Â· won" : ""}
+                  </p>
+                  <ul className="space-y-1">
+                    {list.map((id) => (
+                      <li key={id} className="truncate text-sm">
+                        {byId.get(id)?.displayName}
+                      </li>
+                    ))}
+                    {list.length === 0 ? <li className="text-xs text-muted">empty</li> : null}
+                  </ul>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            Tap a team to mark it the winner. Tap a name below to move them between teams.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {order.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() =>
+                  setTeamA((current) =>
+                    current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+                  )
+                }
+                className="rounded-full border border-border px-3 py-1.5 text-sm text-muted hover:text-text"
+              >
+                {byId.get(id)?.displayName} â†’ {teamA.includes(id) ? "B" : "A"}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {order.length > 0 && effectiveMode === "ffa" ? (
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
             {winnerOnly ? "Who won?" : "Finishing order"}
@@ -284,7 +481,7 @@ export function LogMatchForm({
                       onClick={() => move(index, -1)}
                       className="grid size-8 place-items-center rounded-lg border border-border text-muted disabled:opacity-30"
                     >
-                      ▲
+                      â–²
                     </button>
                     <button
                       type="button"
@@ -293,7 +490,7 @@ export function LogMatchForm({
                       onClick={() => move(index, 1)}
                       className="grid size-8 place-items-center rounded-lg border border-border text-muted disabled:opacity-30"
                     >
-                      ▼
+                      â–¼
                     </button>
                   </li>
                 ))}
@@ -309,7 +506,7 @@ export function LogMatchForm({
           onClick={() => setShowOptions(!showOptions)}
           className="text-sm text-muted hover:text-text"
         >
-          {showOptions ? "▲" : "▼"} More options
+          {showOptions ? "â–²" : "â–¼"} More options
         </button>
         {showOptions ? (
           <div className="mt-3 flex gap-2">
@@ -337,7 +534,7 @@ export function LogMatchForm({
       <ErrorBanner>{error ?? countError}</ErrorBanner>
 
       <Button onClick={submit} disabled={pending || !!countError || !gameId}>
-        {pending ? "Logging…" : "Log match"}
+        {pending ? "Loggingâ€¦" : "Log match"}
       </Button>
     </div>
   );

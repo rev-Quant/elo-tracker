@@ -170,6 +170,29 @@ export async function regenerateInviteCode(
   throw new ConflictError("Could not generate a new invite code. Please try again.");
 }
 
+/** Rename, re-time-zone, or toggle discoverability. Spec §6 "customization". */
+export async function updateGroup(
+  groupId: string,
+  actorRole: GroupRole,
+  patch: { name?: string; isPublic?: boolean; timezone?: string },
+  db: Queryable = defaultDb,
+): Promise<Group> {
+  assertCan(actorRole, "manage_group_settings");
+  const [group] = await db.update(groups).set(patch).where(eq(groups.id, groupId)).returning();
+  if (!group) throw new NotFoundError("That group doesn't exist.");
+  return group;
+}
+
+/** Owner-only, per the spec §6 permission matrix. Cascades to every match/rating. */
+export async function deleteGroup(
+  groupId: string,
+  actorRole: GroupRole,
+  db: Queryable = defaultDb,
+): Promise<void> {
+  assertCan(actorRole, "delete_group");
+  await db.delete(groups).where(eq(groups.id, groupId));
+}
+
 export interface MemberSummary {
   userId: string;
   displayName: string;

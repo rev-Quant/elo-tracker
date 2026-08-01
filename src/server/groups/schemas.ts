@@ -29,6 +29,13 @@ export const joinGroupSchema = z.object({
 });
 export type JoinGroupInput = z.infer<typeof joinGroupSchema>;
 
+export const updateGroupSchema = z.object({
+  name: groupNameSchema.optional(),
+  isPublic: z.boolean().optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+});
+export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
+
 export const updateMemberRoleSchema = z.object({
   role: z.enum(GROUP_ROLES),
 });

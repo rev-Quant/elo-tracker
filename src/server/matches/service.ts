@@ -7,31 +7,29 @@ import {
   games,
   groupMembers,
   matchParticipants,
+  matchTeams,
   matches,
   ratingSnapshots,
   users,
 } from "@/db/schema";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { assertCan } from "@/lib/permissions";
-import { type Rating, defaultRating, displayRating, rateFfa } from "@/lib/rating";
+import { type Rating, type RatingChange, defaultRating, displayRating, rateMatch } from "@/lib/rating";
 import * as groupsService from "@/server/groups/service";
 import { assertGameSupports, resolveRanks } from "./ranking";
 import type { LogMatchInput } from "./schemas";
 
 /**
- * Match logging. Spec §3, §11.
+ * Match logging. Spec §3, §11, §15 (teams).
  *
  * AGREED DEVIATION FROM SPEC §3: ratings are applied at log time and the match
- * goes straight to `confirmed`, rather than waiting for a confirmation quorum.
- * The spec's own retention model (§5, "see something change") depends on the
- * leaderboard moving the instant a result is entered. The confirmation and
- * dispute flow arrives in Phase 2 and will reverse ratings on dispute, which
- * is what `matches.ratings_applied` and the snapshot trail exist for.
+ * goes straight to `confirmed`. Undo/dispute (src/server/matches/void.ts)
+ * reverses this rather than gating it behind a confirmation quorum, so the
+ * leaderboard still moves the instant a result is entered (spec §5).
  *
  * CONCURRENCY: everything runs under a per-group transaction-scoped advisory
- * lock. Two people logging simultaneously at the same table would otherwise
- * read the same "before" ratings and one update would be lost. Groups log a
- * handful of matches an hour, so serialising per group costs nothing.
+ * lock, so two people logging simultaneously cannot read the same "before"
+ * rating and lose one of the updates.
  */
 
 export interface ParticipantResult {
@@ -59,7 +57,6 @@ export async function logMatch(
   assertCan(role, "log_match");
 
   return db.transaction(async (tx) => {
-    // Serialise match logging within this group for the life of the transaction.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${group.id}))`);
 
     if (input.idempotencyKey) {
@@ -70,20 +67,21 @@ export async function logMatch(
     const [game] = await tx.select().from(games).where(eq(games.id, input.gameId)).limit(1);
     if (!game) throw new NotFoundError("That game doesn't exist.");
 
-    assertGameSupports(game, input.teamMode, input.participants.length);
+    // Build a uniform view regardless of ffa/teams: every user gets a
+    // finalRank and, for teams, a teamIndex used only to group them.
+    const plan =
+      input.teamMode === "ffa"
+        ? planFfa(input.participants ?? [], game)
+        : planTeams(input.teams ?? [], game);
 
-    const userIds = input.participants.map((p) => p.userId);
-    await assertAllAreMembers(group.id, userIds, tx);
-
-    const ranked = resolveRanks(input.participants, game.rankingMode);
-    const rankByUser = new Map(ranked.map((r) => [r.userId, r.finalRank]));
+    await assertAllAreMembers(group.id, plan.userIds, tx);
 
     const isCompetitive = input.matchType === "competitive";
-    // Casual play is tracked in its own pool so it never moves, or pollutes,
-    // the competitive leaderboard (spec §1: "No rating impact. Flagged only.").
+    // Casual play lives in its own pool so it never moves the competitive
+    // leaderboard (spec §1: "No rating impact. Flagged only.").
     const pool = isCompetitive ? "competitive" : "casual";
 
-    const before = await loadRatings(group.id, game.id, userIds, pool, tx);
+    const before = await loadRatings(group.id, game.id, plan.userIds, pool, tx);
 
     const [match] = await tx
       .insert(matches)
@@ -92,7 +90,7 @@ export async function logMatch(
         groupId: group.id,
         matchType: input.matchType,
         teamMode: input.teamMode,
-        numTeams: null,
+        numTeams: input.teamMode === "teams" ? plan.teams!.length : null,
         recordedBy: recorderUserId,
         playedAt: input.playedAt ?? new Date(),
         notes: input.notes ?? null,
@@ -102,13 +100,24 @@ export async function logMatch(
       })
       .returning();
 
-    const changes = isCompetitive
+    // matchTeams rows, so teammates share a row for display and disputes.
+    const teamRowId = new Map<number, string>();
+    if (plan.teams) {
+      for (const [teamIndex, team] of plan.teams.entries()) {
+        const [row] = await tx
+          .insert(matchTeams)
+          .values({ matchId: match.id, teamIndex, teamName: team.name ?? null, resultRank: team.rank })
+          .returning({ id: matchTeams.id });
+        teamRowId.set(teamIndex, row.id);
+      }
+    }
+
+    const changes: Map<string, RatingChange<string>> | null = isCompetitive
       ? new Map(
-          rateFfa(
-            userIds.map((userId) => ({
-              key: userId,
-              rating: before.get(userId)!,
-              rank: rankByUser.get(userId)!,
+          rateMatch(
+            plan.sides.map((side) => ({
+              rank: side.rank,
+              members: side.userIds.map((userId) => ({ key: userId, rating: before.get(userId)! })),
             })),
           ).map((c) => [c.key, c]),
         )
@@ -116,17 +125,18 @@ export async function logMatch(
 
     const now = new Date();
 
-    for (const userId of userIds) {
-      const finalRank = rankByUser.get(userId)!;
+    for (const userId of plan.userIds) {
+      const finalRank = plan.rankOf.get(userId)!;
       const isWin = finalRank === 1;
       const change = changes?.get(userId);
       const priorRating = before.get(userId)!;
+      const teamIndex = plan.teamIndexOf?.get(userId);
 
       await tx.insert(matchParticipants).values({
         matchId: match.id,
         userId,
         finalRank,
-        matchTeamId: null,
+        matchTeamId: teamIndex !== undefined ? teamRowId.get(teamIndex) : null,
         ratingBefore: change?.displayBefore ?? null,
         ratingAfter: change?.displayAfter ?? null,
         ratingDelta: change?.delta ?? null,
@@ -188,6 +198,59 @@ export async function logMatch(
   });
 }
 
+/** Uniform shape both planners produce, consumed by the loop above. */
+interface MatchPlan {
+  userIds: string[];
+  rankOf: Map<string, number>;
+  /** Sides passed straight to the OpenSkill engine: one per player (ffa) or per team. */
+  sides: { rank: number; userIds: string[] }[];
+  teams?: { name?: string; rank: number }[];
+  teamIndexOf?: Map<string, number>;
+}
+
+function planFfa(participants: { userId: string; rank: number }[], game: Game): MatchPlan {
+  assertGameSupports(game, "ffa", participants.length);
+  const ranked = resolveRanks(participants, game.rankingMode);
+  return {
+    userIds: ranked.map((r) => r.userId),
+    rankOf: new Map(ranked.map((r) => [r.userId, r.finalRank])),
+    sides: ranked.map((r) => ({ rank: r.finalRank, userIds: [r.userId] })),
+  };
+}
+
+function planTeams(
+  teams: { name?: string; rank: number; userIds: string[] }[],
+  game: Game,
+): MatchPlan {
+  const userIds = teams.flatMap((t) => t.userIds);
+  assertGameSupports(game, "teams", userIds.length);
+
+  // Reuse the individual ranking resolver by keying on team index — it
+  // already handles ties and closes gaps (spec §1).
+  const resolved = resolveRanks(
+    teams.map((t, i) => ({ userId: String(i), rank: t.rank })),
+    game.rankingMode,
+  );
+  const rankByTeamIndex = new Map(resolved.map((r) => [Number(r.userId), r.finalRank]));
+
+  const rankOf = new Map<string, number>();
+  const teamIndexOf = new Map<string, number>();
+  for (const [i, team] of teams.entries()) {
+    for (const userId of team.userIds) {
+      rankOf.set(userId, rankByTeamIndex.get(i)!);
+      teamIndexOf.set(userId, i);
+    }
+  }
+
+  return {
+    userIds,
+    rankOf,
+    sides: teams.map((t, i) => ({ rank: rankByTeamIndex.get(i)!, userIds: t.userIds })),
+    teams: teams.map((t, i) => ({ name: t.name, rank: rankByTeamIndex.get(i)! })),
+    teamIndexOf,
+  };
+}
+
 /** All participants must belong to the group. Spec §9 makes the group the trust boundary. */
 async function assertAllAreMembers(groupId: string, userIds: string[], db: Queryable): Promise<void> {
   const rows = await db
@@ -245,6 +308,12 @@ async function findByIdempotencyKey(
     .limit(1);
   if (!match) return null;
 
+  const [game] = await db.select().from(games).where(eq(games.id, match.gameId)).limit(1);
+  return buildResult(match, game, db);
+}
+
+/** Load a match's game and participants. Used by void.ts after a status change. */
+export async function buildLoggedMatch(match: Match, db: Queryable): Promise<LoggedMatch> {
   const [game] = await db.select().from(games).where(eq(games.id, match.gameId)).limit(1);
   return buildResult(match, game, db);
 }
