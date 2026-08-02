@@ -1,12 +1,17 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorBanner, Field, PageTitle } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 
 export default function ResetPage() {
-  return <div className="min-h-dvh"><ResetForm /></div>;
+  return (
+    <Suspense fallback={<div className="pt-20 text-center text-muted">Loading...</div>}>
+      <ResetForm />
+    </Suspense>
+  );
 }
 
 function ResetForm() {
