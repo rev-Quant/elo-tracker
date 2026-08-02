@@ -18,7 +18,7 @@ const uniqueEmail = () => `user${counter++}@example.com`;
 describe("register", () => {
   it("creates a non-guest with a hashed password", async () => {
     const email = uniqueEmail();
-    const user = await register({ displayName: "Alice", email, password: "a good password" }, t.db);
+    const {user: user} = await register({ displayName: "Alice", email, password: "a good password" }, t.db);
 
     expect(user.displayName).toBe("Alice");
     expect(user.email).toBe(email);
@@ -49,7 +49,7 @@ describe("register", () => {
 describe("login", () => {
   it("accepts correct credentials", async () => {
     const email = uniqueEmail();
-    const created = await register({ displayName: "Bob", email, password: "hunter2hunter2" }, t.db);
+    const {created: created} = await register({ displayName: "Bob", email, password: "hunter2hunter2" }, t.db);
     const found = await login({ email, password: "hunter2hunter2" }, t.db);
     expect(found.id).toBe(created.id);
   });
@@ -86,7 +86,7 @@ describe("login", () => {
 
   it("refuses a soft-deleted account", async () => {
     const email = uniqueEmail();
-    const user = await register({ displayName: "Gone", email, password: "hunter2hunter2" }, t.db);
+    const {user: user} = await register({ displayName: "Gone", email, password: "hunter2hunter2" }, t.db);
     await t.db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, user.id));
 
     await expect(login({ email, password: "hunter2hunter2" }, t.db)).rejects.toBeInstanceOf(
@@ -104,7 +104,7 @@ describe("createGuest", () => {
   });
 
   it("records who created the guest", async () => {
-    const host = await register(
+    const {host: host} = await register(
       { displayName: "Host", email: uniqueEmail(), password: "a good password" },
       t.db,
     );
@@ -177,7 +177,7 @@ describe("claimGuest", () => {
 
 describe("toPublicUser", () => {
   it("never exposes email or password hash", async () => {
-    const user = await register(
+    const {user: user} = await register(
       { displayName: "Public", email: uniqueEmail(), password: "a good password" },
       t.db,
     );

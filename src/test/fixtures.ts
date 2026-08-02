@@ -10,10 +10,11 @@ let seq = 0;
 const next = () => ++seq;
 
 export async function makeUser(db: Db, displayName = `User ${next()}`): Promise<User> {
-  return authService.register(
+  const { user } = await authService.register(
     { displayName, email: `u${next()}@example.com`, password: "a good test password" },
     db,
   );
+  return user;
 }
 
 export async function makeGuest(db: Db, displayName = `Guest ${next()}`): Promise<User> {

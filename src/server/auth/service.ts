@@ -5,6 +5,7 @@ import { type User, users } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { ConflictError, NotFoundError, UnauthorizedError } from "@/lib/errors";
 import type { ClaimGuestInput, CreateGuestInput, LoginInput, RegisterInput } from "./schemas";
+import { generateVerificationToken } from "./tokens";
 
 /**
  * Account lifecycle. Spec §6 "Account Creation" and §11 /api/auth/*.
@@ -36,7 +37,7 @@ export function toPublicUser(user: User): PublicUser {
 
 const EMAIL_TAKEN = "That email is already registered. Try signing in instead.";
 
-export async function register(input: RegisterInput, db: Queryable = defaultDb): Promise<User> {
+export async function register(input: RegisterInput, db: Queryable = defaultDb): Promise<{ user: User; verifyToken: string }> {
   const passwordHash = await hashPassword(input.password);
 
   try {
@@ -49,7 +50,8 @@ export async function register(input: RegisterInput, db: Queryable = defaultDb):
         isGuest: false,
       })
       .returning();
-    return user;
+    const verifyToken = await generateVerificationToken();
+    return { user, verifyToken };
   } catch (err) {
     if (isUniqueViolation(err, "users_email_unique")) throw new ConflictError(EMAIL_TAKEN);
     throw err;

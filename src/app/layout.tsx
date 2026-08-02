@@ -4,8 +4,18 @@ import { ThemePicker } from "@/components/theme-picker";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Board Game ELO Tracker",
-  description: "Track ratings across every game your group plays. Settle it with data.",
+  title: {
+    default: "Board Game ELO Tracker — Who's actually winning?",
+    template: "%s — Board Game ELO Tracker",
+  },
+  description:
+    "Track OpenSkill ratings across every board game your group plays. Log matches in 10 seconds. FFA or teams. Free forever.",
+  keywords: ["board game", "elo", "rating", "tracker", "openskill", "leaderboard"],
+  openGraph: {
+    title: "Board Game ELO Tracker",
+    description: "Track ratings across every game your group plays. Settle it with data.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

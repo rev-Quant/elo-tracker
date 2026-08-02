@@ -13,7 +13,7 @@ export const POST = handler(async (request: Request) => {
     throw new TooManyRequestsError("Too many accounts created from this IP. Wait an hour.");
   }
 
-  const user = await register(input);
+  const { user, verifyToken } = await register(input);
   await startSession({ userId: user.id, isGuest: false });
-  return json({ user: toPublicUser(user) }, { status: 201 });
+  return json({ user: toPublicUser(user), verifyToken }, { status: 201 });
 });
