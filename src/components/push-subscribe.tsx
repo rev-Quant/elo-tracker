@@ -11,7 +11,7 @@ export function NotificationBanner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem("elo-push-dismissed") === "1";
+    const dismissed = sessionStorage.getItem("elo-push-dismissed") === "1";
     if (dismissed) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
@@ -28,25 +28,32 @@ export function NotificationBanner() {
     try {
       const reg = await navigator.serviceWorker.ready;
       const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "BOEJpx6BTxtFc2-0Zj8EiQIPSToJcvdq3yjP7Zoi4SIhUgwJdlHBLOjrNB4bI_2iavYHq9SmC34VJEwIGLjtY8E";
+      console.log("Subscribing with VAPID key:", key.slice(0, 20) + "...");
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlB64(key),
       });
+      console.log("Got subscription, sending to server...");
       await api.post("/api/push/subscribe", { subscription: sub.toJSON() });
+      console.log("Subscription saved on server");
       setSubscribed(true);
       setShow(false);
+      localStorage.setItem("elo-push-enabled", "1");
     } catch (e: any) {
+      console.error("Push subscribe failed:", e?.name, e?.message, e);
       if (e?.name === "NotAllowedError") {
-        setError("Notifications blocked. Enable them in your browser settings.");
+        setError("Notifications blocked. Enable them in your browser settings, then try again.");
+      } else if (e?.name === "AbortError") {
+        setError("Service worker not ready. Refresh and try again.");
       } else {
-        setError("Couldn't enable. Try again or check browser settings.");
+        setError(`Couldn't enable: ${e?.message || "Check browser settings"}`);
       }
     }
   }
 
   function dismiss() {
     setShow(false);
-    localStorage.setItem("elo-push-dismissed", "1");
+    sessionStorage.setItem("elo-push-dismissed", "1");
   }
 
   if (!show && !error) return null;

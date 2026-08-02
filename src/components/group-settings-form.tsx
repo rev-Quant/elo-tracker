@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button, Card, ErrorBanner, Field, SectionTitle } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 import { useHideRating } from "@/lib/privacy";
+import { NotificationBanner } from "@/components/push-subscribe";
 
 interface Props {
   slug: string;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { GroupSettingsForm } from "@/components/group-settings-form";
+import { NotificationBanner } from "@/components/push-subscribe";
 import { PageTitle } from "@/components/ui";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
