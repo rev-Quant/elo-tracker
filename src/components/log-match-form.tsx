@@ -6,6 +6,7 @@ import { Button, Card, Chip, Delta, ErrorBanner, Field } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 import { queueMatch } from "@/lib/offline";
 import { UndoButton } from "@/components/match-actions";
+import { Confetti } from "@/components/confetti";
 
 export interface GameOption {
   id: string;
@@ -52,6 +53,7 @@ export function LogMatchForm({
   members: MemberOption[];
   defaultGameId: string | null;
   defaultParticipantIds: string[];
+  currentUserId: string;
 }) {
   const router = useRouter();
 
@@ -65,6 +67,7 @@ export function LogMatchForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LoggedResult | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Guests added during this session, appended to the roster locally so the
   // page does not need a full reload mid-flow.
@@ -215,6 +218,9 @@ export function LogMatchForm({
     try {
       const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
       setResult(payload);
+      if (payload.participants.some((p) => p.userId === currentUserId && p.finalRank === 1)) {
+        setShowConfetti(true);
+      }
       router.refresh();
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.detail.message : "Couldn't log that match.";
@@ -230,6 +236,7 @@ export function LogMatchForm({
   if (result) {
     return (
       <div className="animate-scale-in space-y-4">
+        <Confetti trigger={showConfetti} />
         <Card glow>
           <p className="mb-3 text-[0.875rem] font-semibold">Match logged</p>
           <ul className="divide-y divide-border">

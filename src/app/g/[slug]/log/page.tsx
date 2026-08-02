@@ -88,6 +88,7 @@ export default async function LogMatchPage({ params }: { params: Promise<{ slug:
           // A player removed from the group since the last match must not
           // silently reappear in the pre-filled line-up.
           .filter((id) => memberIds.has(id))}
+        currentUserId={session.userId}
       />
     </main>
   );
