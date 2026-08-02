@@ -3,8 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import postgres from "postgres";
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL missing");
+const url = process.env.DATABASE_URL!;
 
 async function main() {
   const sql = postgres(url, { max: 1, ssl: "require" });
