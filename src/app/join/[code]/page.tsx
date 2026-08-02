@@ -11,12 +11,6 @@ import { JoinNowButton } from "./join-now";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Invite link landing. Spec §6 "group-first onboarding".
- *
- * A signed-out visitor sees what they are joining BEFORE being asked to make
- * an account, which is the whole point of the group-first flow.
- */
 export default async function JoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code: raw } = await params;
   const code = normalizeInviteCode(raw);
@@ -26,8 +20,6 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   if (!group) notFound();
 
   const session = await getSession();
-
-  // Already signed in: join immediately and get out of the way.
   if (session) {
     const { group: joined } = await joinByInviteCode({ inviteCode: code }, session.userId);
     redirect(`/g/${joined.slug}`);
@@ -35,16 +27,21 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
 
   return (
     <main>
-      <div className="mb-6 mt-8 text-center">
-        <p className="text-sm text-muted">You&apos;ve been invited to</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">{group.name}</h1>
+      <div className="mb-8 mt-10 text-center">
+        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.15em] text-muted-dim">You&apos;ve been invited to</p>
+        <h1 className="mt-2 text-[2rem] font-extrabold leading-tight tracking-[-0.025em]">{group.name}</h1>
+        <p className="mx-auto mt-2 max-w-xs text-[0.8125rem] leading-relaxed text-muted">
+          Track board game ratings together
+        </p>
       </div>
 
-      <Card className="mb-4">
+      <Card glow>
         <AuthForm redirectTo={`/join/${code}`} />
       </Card>
 
-      <JoinNowButton code={code} />
+      <div className="mt-4">
+        <JoinNowButton code={code} />
+      </div>
     </main>
   );
 }

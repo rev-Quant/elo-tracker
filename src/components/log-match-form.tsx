@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Button, Card, Delta, ErrorBanner } from "@/components/ui";
+import { Button, Card, Chip, Delta, ErrorBanner, Field } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 import { UndoButton } from "@/components/match-actions";
 
@@ -224,24 +224,24 @@ export function LogMatchForm({
 
   if (result) {
     return (
-      <div className="space-y-4">
-        <Card>
-          <p className="mb-3 text-sm font-medium">Match logged</p>
-          <ul className="space-y-2">
+      <div className="animate-scale-in space-y-4">
+        <Card glow>
+          <p className="mb-3 text-[0.875rem] font-semibold">Match logged</p>
+          <ul className="divide-y divide-border">
             {result.participants.map((p) => (
-              <li key={p.userId} className="flex items-center gap-3 text-sm">
-                <span className="w-5 text-muted tnum">{p.finalRank}</span>
-                <span className="flex-1 truncate">{p.displayName}</span>
-                <Delta value={p.ratingDelta} className="font-semibold" />
+              <li key={p.userId} className="flex items-center gap-3 py-2.5 text-[0.8125rem]">
+                <span className="w-6 text-center font-semibold tabular-nums text-muted-dim">{p.finalRank}</span>
+                <span className="flex-1 truncate font-medium">{p.displayName}</span>
+                <Delta value={p.ratingDelta} />
               </li>
             ))}
           </ul>
         </Card>
         <UndoButton matchId={result.match.id} onUndone={() => setResult(null)} />
-        <Button onClick={() => router.push(`/g/${slug}`)}>Back to standings</Button>
-        <Button variant="secondary" onClick={() => setResult(null)}>
-          Log another
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => router.push(`/g/${slug}`)}>Back to standings</Button>
+          <Button variant="ghost" onClick={() => setResult(null)}>Log another</Button>
+        </div>
       </div>
     );
   }
@@ -250,61 +250,38 @@ export function LogMatchForm({
     <div className="space-y-5">
       <section>
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Game</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {[...games, ...extraGames].map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => setGameId(g.id)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                g.id === gameId
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border text-muted hover:text-text"
-              }`}
-            >
+            <Chip key={g.id} active={g.id === gameId} onClick={() => setGameId(g.id)}>
               {g.name}
-            </button>
+            </Chip>
           ))}
           {addingGame ? null : (
             <button
               type="button"
               onClick={() => setAddingGame(true)}
-              className="rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-muted hover:text-text"
+              className="inline-flex items-center rounded-full border border-dashed border-muted-dim px-3 py-1.5 text-[0.8125rem] font-medium text-muted-dim transition hover:border-muted hover:text-muted"
             >
-              + Custom game
+              + Custom
             </button>
           )}
         </div>
 
         {addingGame ? (
-          <form onSubmit={addGame} className="mt-2 space-y-2 rounded-xl border border-border p-3">
-            <input
+          <form onSubmit={addGame} className="mt-2 space-y-2 rounded-xl border border-border bg-surface-2 p-3">
+            <Field
+              label="Game name"
               value={newGameName}
               onChange={(e) => setNewGameName(e.target.value)}
-              placeholder="Game name"
               autoFocus
-              className="w-full rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
             />
-            <label className="flex items-center gap-2 text-sm text-muted">
-              <input
-                type="checkbox"
-                checked={newGameTeams}
-                onChange={(e) => setNewGameTeams(e.target.checked)}
-              />
-              Played in teams
+            <label className="flex items-center gap-2.5 text-[0.8125rem] font-medium">
+              <input type="checkbox" checked={newGameTeams} onChange={(e) => setNewGameTeams(e.target.checked)} />
+              <span>Played in teams</span>
             </label>
             <div className="flex gap-2">
-              <Button type="submit" variant="secondary" className="w-auto px-4" disabled={pending}>
-                Add game
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-auto px-4"
-                onClick={() => setAddingGame(false)}
-              >
-                Cancel
-              </Button>
+              <Button size="sm" type="submit" variant="secondary" disabled={pending}>Add game</Button>
+              <Button size="sm" type="button" variant="ghost" onClick={() => setAddingGame(false)}>Cancel</Button>
             </div>
           </form>
         ) : null}
@@ -314,35 +291,19 @@ export function LogMatchForm({
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
           Who played?
         </h2>
-        <div className="flex flex-wrap gap-2">
-          {roster.map((m) => {
-            const active = order.includes(m.userId);
-            return (
-              <button
-                key={m.userId}
-                type="button"
-                aria-pressed={active}
-                onClick={() => toggle(m.userId)}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  active
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-muted hover:text-text"
-                }`}
-              >
-                {m.displayName}
-              </button>
-            );
-          })}
-
-          {addingGuest ? null : (
-            <button
-              type="button"
-              onClick={() => setAddingGuest(true)}
-              className="rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-muted hover:text-text"
-            >
-              + Guest
-            </button>
-          )}
+        <div className="flex flex-wrap gap-1.5">
+          {roster.map((m) => (
+            <Chip key={m.userId} active={order.includes(m.userId)} onClick={() => toggle(m.userId)}>
+              {m.displayName}
+            </Chip>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAddingGuest(true)}
+            className="inline-flex items-center rounded-full border border-dashed border-muted-dim px-3 py-1.5 text-[0.8125rem] font-medium text-muted-dim transition hover:border-muted hover:text-muted"
+          >
+            + Guest
+          </button>
         </div>
 
         {addingGuest ? (
@@ -500,41 +461,32 @@ export function LogMatchForm({
         </section>
       ) : null}
 
-      <section>
+<section>
         <button
           type="button"
           onClick={() => setShowOptions(!showOptions)}
-          className="text-sm text-muted hover:text-text"
+          className="text-[0.8125rem] font-medium text-muted hover:text-text"
         >
-          {showOptions ? "â–²" : "â–¼"} More options
+          {showOptions ? "▲" : "▼"} More options
         </button>
         {showOptions ? (
           <div className="mt-3 flex gap-2">
             {(["competitive", "casual"] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setMatchType(type)}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm capitalize transition ${
-                  matchType === type
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-muted"
-                }`}
-              >
+              <Chip key={type} active={matchType === type} onClick={() => setMatchType(type)}>
                 {type}
-              </button>
+              </Chip>
             ))}
           </div>
         ) : null}
         {matchType === "casual" ? (
-          <p className="mt-2 text-xs text-muted">Casual games don&apos;t affect ratings.</p>
+          <p className="mt-2 text-[0.6875rem] text-muted-dim">Casual games don&apos;t affect ratings.</p>
         ) : null}
       </section>
 
       <ErrorBanner>{error ?? countError}</ErrorBanner>
 
       <Button onClick={submit} disabled={pending || !!countError || !gameId}>
-        {pending ? "Loggingâ€¦" : "Log match"}
+        {pending ? "Logging…" : "Log match"}
       </Button>
     </div>
   );

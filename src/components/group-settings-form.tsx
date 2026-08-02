@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Card, ErrorBanner, Field } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, SectionTitle } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 
 interface Props {
@@ -11,7 +11,6 @@ interface Props {
   canDelete: boolean;
 }
 
-/** Group customization: rename, timezone, discoverability, invite rotation. Spec §6. */
 export function GroupSettingsForm({ slug, group, canDelete }: Props) {
   const router = useRouter();
   const [name, setName] = useState(group.name);
@@ -22,8 +21,8 @@ export function GroupSettingsForm({ slug, group, canDelete }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function save(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setPending(true);
     setError(null);
     setSaved(false);
@@ -40,30 +39,28 @@ export function GroupSettingsForm({ slug, group, canDelete }: Props) {
       setSaved(true);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't save those changes.");
+      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't save.");
     } finally {
       setPending(false);
     }
   }
 
   async function regenerate() {
-    if (!confirm("Regenerate the invite code? The old link will stop working.")) return;
+    if (!confirm("Regenerate invite code? Old link stops working.")) return;
     setPending(true);
     setError(null);
     try {
       const { inviteCode: next } = await api.post<{ inviteCode: string }>(`/api/groups/${slug}/invite`);
       setInviteCode(next);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't regenerate the code.");
+      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't regenerate.");
     } finally {
       setPending(false);
     }
   }
 
   async function remove() {
-    if (!confirm(`Delete "${group.name}"? This removes every match and rating in it. This cannot be undone.`)) {
-      return;
-    }
+    if (!confirm(`Delete "${group.name}"? This removes all matches and ratings.`)) return;
     setPending(true);
     try {
       await fetch(`/api/groups/${slug}`, { method: "DELETE" });
@@ -74,44 +71,41 @@ export function GroupSettingsForm({ slug, group, canDelete }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      <form onSubmit={save} className="space-y-3">
+    <div className="space-y-6">
+      <form onSubmit={save} className="space-y-4">
+        <SectionTitle>Display</SectionTitle>
         <Field label="Group name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <Field
-          label="Timezone (IANA, e.g. America/New_York)"
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-sm">
+        <Field label="Timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="America/New_York" />
+        <label className="flex items-center gap-2.5 text-[0.8125rem] font-medium">
           <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-          Public — appears in discovery
+          <span>Public — appears in discovery</span>
         </label>
         <ErrorBanner>{error}</ErrorBanner>
         <Button type="submit" disabled={pending}>
-          {saved ? "Saved" : pending ? "Saving…" : "Save changes"}
+          {saved ? "Saved ✓" : pending ? "Saving…" : "Save changes"}
         </Button>
       </form>
 
-      <Card>
-        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Invite code</p>
-        <p className="mb-3 font-mono text-lg">{inviteCode}</p>
-        <Button variant="secondary" onClick={regenerate} disabled={pending}>
-          Regenerate code
-        </Button>
-      </Card>
-
-      {canDelete ? (
-        <Card className="border-down/30">
-          <p className="mb-3 text-sm text-muted">Deleting a group removes all its matches and ratings.</p>
-          <Button
-            variant="secondary"
-            onClick={remove}
-            disabled={pending}
-            className="border-down/50 text-down"
-          >
-            Delete group
+      <section>
+        <SectionTitle>Invite link</SectionTitle>
+        <Card>
+          <p className="mb-3 font-mono text-[1.0625rem] font-semibold tracking-wider">{inviteCode}</p>
+          <Button variant="secondary" size="sm" onClick={regenerate} disabled={pending}>
+            Regenerate code
           </Button>
         </Card>
+      </section>
+
+      {canDelete ? (
+        <section>
+          <SectionTitle>Danger zone</SectionTitle>
+          <Card className="border-down/20">
+            <p className="mb-3 text-[0.8125rem] text-muted">Removes all matches, participants, and ratings.</p>
+            <Button variant="danger" size="sm" onClick={remove} disabled={pending}>
+              Delete group
+            </Button>
+          </Card>
+        </section>
       ) : null}
     </div>
   );

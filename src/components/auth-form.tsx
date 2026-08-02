@@ -44,15 +44,18 @@ export function AuthForm({ redirectTo = "/groups" }: { redirectTo?: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="space-y-3.5">
       {mode === "register" ? (
-        <Field
-          label="Your name"
-          name="displayName"
-          autoComplete="name"
-          required
-          error={fields.displayName?.[0]}
-        />
+        <div className="animate-fade-in">
+          <Field
+            label="Your name"
+            name="displayName"
+            autoComplete="name"
+            placeholder="Jane"
+            required
+            error={fields.displayName?.[0]}
+          />
+        </div>
       ) : null}
 
       <Field
@@ -60,6 +63,7 @@ export function AuthForm({ redirectTo = "/groups" }: { redirectTo?: string }) {
         name="email"
         type="email"
         autoComplete="email"
+        placeholder="jane@example.com"
         required
         error={fields.email?.[0]}
       />
@@ -68,6 +72,7 @@ export function AuthForm({ redirectTo = "/groups" }: { redirectTo?: string }) {
         name="password"
         type="password"
         autoComplete={mode === "register" ? "new-password" : "current-password"}
+        placeholder="At least 8 characters"
         required
         error={fields.password?.[0]}
       />
@@ -75,12 +80,17 @@ export function AuthForm({ redirectTo = "/groups" }: { redirectTo?: string }) {
       <ErrorBanner>{error}</ErrorBanner>
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Just a moment…" : mode === "register" ? "Create account" : "Sign in"}
+        {pending
+          ? "Just a moment…"
+          : mode === "register"
+            ? "Create account"
+            : "Sign in"}
       </Button>
 
       <Button
         type="button"
         variant="ghost"
+        size="sm"
         onClick={() => {
           setMode(mode === "login" ? "register" : "login");
           setError(null);

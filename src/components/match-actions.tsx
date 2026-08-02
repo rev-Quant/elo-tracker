@@ -7,7 +7,6 @@ import { ApiRequestError, api } from "@/lib/api-client";
 
 const UNDO_WINDOW_SECONDS = 60;
 
-/** "Match logged. Undo?" toast (spec §3), shown right after logging. */
 export function UndoButton({ matchId, onUndone }: { matchId: string; onUndone: () => void }) {
   const [secondsLeft, setSecondsLeft] = useState(UNDO_WINDOW_SECONDS);
   const [pending, setPending] = useState(false);
@@ -21,55 +20,42 @@ export function UndoButton({ matchId, onUndone }: { matchId: string; onUndone: (
 
   async function undo() {
     setPending(true);
-    try {
-      await api.del(`/api/matches/${matchId}`);
-      onUndone();
-    } finally {
-      setPending(false);
-    }
+    try { await api.del(`/api/matches/${matchId}`); onUndone(); }
+    finally { setPending(false); }
   }
 
   return (
-    <Button variant="secondary" onClick={undo} disabled={pending}>
+    <Button variant="ghost" size="sm" onClick={undo} disabled={pending} className="!w-auto">
       {pending ? "Undoing…" : `Undo (${secondsLeft}s)`}
     </Button>
   );
 }
 
-/**
- * Void/dispute a match. Spec §4/§11 — see src/server/matches/void.ts for why
- * this one action covers both undo and dispute.
- */
 export function VoidButton({ matchId }: { matchId: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
-    if (!confirm("Void this match? Ratings it produced will be reversed.")) return;
+    if (!confirm("Void this match?")) return;
     setPending(true);
     setError(null);
-    try {
-      await api.del(`/api/matches/${matchId}`);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't void that match.");
-    } finally {
-      setPending(false);
-    }
+    try { await api.del(`/api/matches/${matchId}`); router.refresh(); }
+    catch (err) { setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't void."); }
+    finally { setPending(false); }
   }
 
   return (
-    <span className="inline-flex flex-col items-end gap-1">
+    <span className="inline-flex items-center gap-1">
       <button
         type="button"
         onClick={run}
         disabled={pending}
-        className="text-xs text-muted underline-offset-2 hover:text-down hover:underline disabled:opacity-50"
+        className="text-[0.6875rem] font-medium text-muted-dim underline-offset-2 hover:text-down hover:underline disabled:opacity-50"
       >
-        {pending ? "Voiding…" : "Void"}
+        {pending ? "…" : "Void"}
       </button>
-      {error ? <span className="text-xs text-down">{error}</span> : null}
+      {error ? <span className="text-[0.625rem] text-down">{error}</span> : null}
     </span>
   );
 }

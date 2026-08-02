@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Card, Delta, PageTitle } from "@/components/ui";
+import { Card, Delta, PageTitle, EmptyState } from "@/components/ui";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { roundup } from "@/server/groups/roundup";
@@ -12,54 +12,51 @@ export default async function RoundupPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const session = await getSession();
   if (!session) redirect("/");
-
-  let membership;
-  try {
-    membership = await requireMembership(slug, session.userId);
-  } catch (err) {
-    if (err instanceof NotFoundError) notFound();
-    throw err;
-  }
-  const { group } = membership;
-  const report = await roundup(group.id);
+  let m;
+  try { m = await requireMembership(slug, session.userId); }
+  catch (err) { if (err instanceof NotFoundError) notFound(); throw err; }
+  const report = await roundup(m.group.id);
 
   return (
     <main>
-      <Link href={`/g/${slug}`} className="mb-3 inline-block text-sm text-muted hover:text-text">
-        ← {group.name}
+      <Link href={`/g/${slug}`} className="mb-4 inline-flex items-center gap-1 text-[0.8125rem] font-medium text-muted hover:text-text">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5 4 6l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        {m.group.name}
       </Link>
-      <PageTitle sub={`Last 7 days · ${report.totalMatches} matches played`}>Weekly roundup</PageTitle>
-
+      <PageTitle sub={`Last 7 days · ${report.totalMatches} matches`}>Weekly report</PageTitle>
       {report.totalMatches === 0 ? (
-        <Card className="text-center text-sm text-muted">
-          No games this week. Be the spark — log one.
-        </Card>
+        <EmptyState icon="📋" title="No games this week" body="Log a match to see it show up here." />
       ) : (
         <div className="space-y-3">
           {report.mostWins ? (
             <Card>
-              🏆 <strong>Most wins:</strong> {report.mostWins.displayName} ({report.mostWins.wins}-
-              {report.mostWins.losses})
+              <span className="text-lg">🏆</span>{" "}
+              <span className="font-semibold">{report.mostWins.displayName}</span> led with{" "}
+              <span className="tabular-nums font-semibold">{report.mostWins.wins}W · {report.mostWins.losses}L</span>
             </Card>
           ) : null}
           {report.biggestGain ? (
             <Card>
-              📈 <strong>Biggest gain:</strong> {report.biggestGain.displayName}{" "}
-              <Delta value={report.biggestGain.delta} /> (now {Math.round(report.biggestGain.newRating)})
+              <span className="text-lg">📈</span>{" "}
+              <span className="font-semibold">{report.biggestGain.displayName}</span> gained{" "}
+              <Delta value={report.biggestGain.delta} />{" "}
+              <span className="tabular-nums">now {Math.round(report.biggestGain.newRating)}</span>
             </Card>
           ) : null}
           {report.biggestUpset ? (
             <Card>
-              😱 <strong>Biggest upset:</strong> {report.biggestUpset.winnerName} beat{" "}
-              {report.biggestUpset.loserName} despite a {report.biggestUpset.gap}-point gap
+              <span className="text-lg">😱</span>{" "}
+              <span className="font-semibold">{report.biggestUpset.winnerName}</span> beat{" "}
+              <span className="font-semibold">{report.biggestUpset.loserName}</span> despite a{" "}
+              <span className="tabular-nums font-semibold">{report.biggestUpset.gap}</span>-point gap
             </Card>
           ) : null}
         </div>
       )}
-
       {report.quiet.length > 0 ? (
-        <Card className="mt-3 text-sm text-muted">
-          💤 <strong>Quiet this week:</strong> {report.quiet.map((q) => q.displayName).join(", ")}
+        <Card className="mt-4 text-[0.8125rem] text-muted">
+          💤 <span className="font-medium text-text-dim">Quiet this week:</span>{" "}
+          {report.quiet.map((q) => q.displayName).join(", ")}
         </Card>
       ) : null}
     </main>

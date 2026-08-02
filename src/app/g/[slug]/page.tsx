@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Card, EmptyState, LinkButton } from "@/components/ui";
 import { VoidButton } from "@/components/match-actions";
+import { Card, EmptyState, LinkButton, SectionTitle, WinRateBar } from "@/components/ui";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -37,83 +37,110 @@ export default async function GroupPage({ params, searchParams }: Props) {
 
   const [standings, recent, idleDays] = await Promise.all([
     selected ? leaderboard(group.id, selected.id) : Promise.resolve([]),
-    history(group.id, { limit: 5 }),
+    history(group.id, { limit: 8 }),
     daysSinceLastMatch(group.id),
   ]);
 
-  // Spec §5: a stale leaderboard kills retention, so nudge instead of going quiet.
   const stale = idleDays !== null && idleDays >= 14;
+  const isSpectator = !can(role, "log_match");
 
   return (
     <main>
-      <header className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{group.name}</h1>
-          <p className="mt-1 text-sm text-muted">
-            Invite code <span className="font-mono text-text">{group.inviteCode}</span>
-          </p>
+      <header className="mb-6">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-[1.65rem] font-bold leading-tight tracking-[-0.02em]">
+            {group.name}
+          </h1>
+          <Link href={`/g/${slug}/settings`} className="shrink-0 text-[0.8125rem] font-medium text-muted hover:text-text">
+            Settings
+          </Link>
         </div>
-        <Link href={`/g/${slug}/settings`} className="shrink-0 text-sm text-muted hover:text-text">
-          Settings
-        </Link>
+        <p className="mt-1.5 text-[0.75rem] text-muted-dim">
+          Share the invite code{" "}
+          <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[0.8125rem] font-medium text-text-dim">
+            {group.inviteCode}
+          </span>
+        </p>
       </header>
 
-      <Link href={`/g/${slug}/roundup`} className="mb-5 block text-sm text-accent hover:underline">
-        📋 This week&apos;s roundup →
-      </Link>
-
-      {can(role, "log_match") ? (
-        <LinkButton href={`/g/${slug}/log`} className="mb-5">
-          Log a game
+      <div className="mb-5 flex gap-2">
+        {isSpectator ? null : (
+          <LinkButton href={`/g/${slug}/log`}>
+            Log a game
+          </LinkButton>
+        )}
+        <LinkButton href={`/g/${slug}/roundup`} variant="secondary">
+          Weekly report
         </LinkButton>
-      ) : (
+      </div>
+
+      {isSpectator ? (
         <Card className="mb-5 text-center text-sm text-muted">
-          You&apos;re a spectator in this group — you can follow along but not log games.
+          You&apos;re a spectator — follow along, but you can&apos;t log games.
         </Card>
-      )}
+      ) : null}
+
+      {stale ? (
+        <div className="mb-5 rounded-lg border border-amber/20 bg-amber/5 px-3.5 py-3 text-[0.8125rem] leading-relaxed text-amber">
+          No games logged in a couple of weeks. Time for a game night?
+        </div>
+      ) : null}
 
       {played.length > 1 ? (
-        <nav className="mb-3 flex gap-2 overflow-x-auto pb-1">
-          {played.map((g) => (
-            <Link
-              key={g.id}
-              href={`/g/${slug}?game=${g.slug}`}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition ${
-                g.id === selected?.id
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border text-muted hover:text-text"
-              }`}
-            >
-              {g.name}
-            </Link>
-          ))}
+        <nav className="mb-4 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {played.map((g) => {
+            const active = g.id === selected?.id;
+            return (
+              <Link
+                key={g.id}
+                href={`/g/${slug}?game=${g.slug}`}
+                className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[0.8125rem] font-medium transition-all duration-150 ${
+                  active
+                    ? "border-accent/50 bg-accent/10 text-accent"
+                    : "border-border text-muted hover:border-muted-dim hover:text-text-dim"
+                }`}
+              >
+                {g.name}
+              </Link>
+            );
+          })}
         </nav>
       ) : null}
 
       {standings.length === 0 ? (
         <EmptyState
+          icon="🏆"
           title="No games logged yet"
-          body="Log your first match and the standings will appear here. Everyone starts on equal footing."
+          body="Log your first match and the standings will appear. Everyone starts on equal footing — exactly 1,000."
+          action={
+            isSpectator ? null : <LinkButton href={`/g/${slug}/log`}>Log your first game</LinkButton>
+          }
         />
       ) : (
-        <Card className="p-0">
-          <h2 className="border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-            {selected?.name} standings
-          </h2>
-          <ul>
+        <Card noPadding glow>
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-dim">
+              {selected?.name} standings
+            </h2>
+          </div>
+          <ul className="divide-y divide-border">
             {standings.map((entry) => (
-              <li key={entry.userId} className="border-b border-border last:border-0">
+              <li key={entry.userId}>
                 <Link
                   href={`/g/${slug}/u/${entry.userId}`}
-                  className="flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2"
                 >
-                  <span className="w-5 shrink-0 text-sm text-muted tnum">{entry.rank}</span>
-                  <span className="min-w-0 flex-1 truncate font-medium">{entry.displayName}</span>
-                  <span className="shrink-0 text-xs text-muted tnum">
-                    {entry.wins}-{entry.losses}
+                  <span className="w-6 shrink-0 text-center text-[0.8125rem] font-semibold tabular-nums text-muted-dim">
+                    {entry.rank}
                   </span>
-                  <span className="w-14 shrink-0 text-right font-semibold tnum">
-                    {Math.round(entry.displayRating)}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.875rem] font-medium">{entry.displayName}</p>
+                    <WinRateBar wins={entry.wins} losses={entry.losses} className="mt-1.5" />
+                  </div>
+                  <span className="shrink-0 text-right">
+                    <span className="text-[0.9375rem] font-bold tabular-nums">
+                      {Math.round(entry.displayRating)}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -122,40 +149,26 @@ export default async function GroupPage({ params, searchParams }: Props) {
         </Card>
       )}
 
-      {stale ? (
-        <p className="mt-3 text-center text-sm text-muted">
-          No games in a couple of weeks. Time for a game night?
-        </p>
-      ) : null}
-
       {recent.matches.length > 0 ? (
         <section className="mt-6">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-            Recent matches
-          </h2>
-          <Card className="p-0">
-            <ul>
+          <SectionTitle>Recent matches</SectionTitle>
+          <Card noPadding>
+            <ul className="divide-y divide-border">
               {recent.matches.map((match) => {
                 const winners = match.participants.filter((p) => p.finalRank === 1);
                 return (
-                  <li
-                    key={match.id}
-                    className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0"
-                  >
+                  <li key={match.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
+                      <p className="truncate text-[0.8125rem] font-medium">
                         {winners.map((w) => w.displayName).join(" & ")} won
                       </p>
-                      <p className="truncate text-xs text-muted">
-                        {match.game.name} · {match.participants.length} players
+                      <p className="mt-0.5 truncate text-[0.6875rem] text-muted-dim">
+                        {match.game.name}
                         {match.matchType === "casual" ? " · casual" : ""}
                       </p>
                     </div>
-                    <time className="shrink-0 text-xs text-muted" dateTime={match.playedAt.toISOString()}>
-                      {match.playedAt.toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                    <time dateTime={match.playedAt.toISOString()} className="shrink-0 text-[0.6875rem] tabular-nums text-muted-dim">
+                      {match.playedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                     </time>
                     {can(role, "void_matches") ? <VoidButton matchId={match.id} /> : null}
                   </li>

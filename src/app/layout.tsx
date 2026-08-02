@@ -3,21 +3,29 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Board Game ELO Tracker",
-  description: "Track ratings for the games you play with friends.",
+  description: "Track ratings across every game your group plays. Settle it with data.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0d10",
+  themeColor: "#06080b",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+      </head>
       <body className="min-h-dvh bg-bg text-text">
-        {/* Mobile-first: a single narrow column, centred on larger screens. */}
-        <div className="mx-auto w-full max-w-md px-4 pb-24 pt-6">{children}</div>
+        <div className="mx-auto w-full max-w-lg px-5 pb-24 pt-6">{children}</div>
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute left-1/4 top-0 h-96 w-96 -translate-y-1/2 rounded-full bg-accent/5 blur-3xl" />
+          <div className="absolute right-1/4 bottom-0 h-80 w-80 translate-y-1/2 rounded-full bg-accent/3 blur-3xl" />
+        </div>
       </body>
     </html>
   );
