@@ -8,8 +8,7 @@
  * Plackett-Luce model, so we pass no overrides. They are re-exported here as
  * named constants purely so the values are greppable and assertable in tests.
  */
-import { ordinal as osOrdinal, rate as osRate, rating as osRating, predictWin } from "openskill";
-export { osOrdinal, osRate, osRating, predictWin };
+import { ordinal as osOrdinal, rate as osRate, rating as osRating } from "openskill";
 import type { Rating } from "openskill";
 
 export type { Rating };
