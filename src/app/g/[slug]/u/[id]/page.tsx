@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Chip, Delta, EmptyState, HeroRating, SectionTitle, WinRateBar, Card } from "@/components/ui";
 import { ClaimAccountBanner } from "@/components/claim-banner";
+import { BadgeToast } from "@/components/badge-toast";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { requireMembership } from "@/server/groups/service";
@@ -40,6 +41,7 @@ export default async function ProfilePage({ params }: Props) {
 
   return (
     <main>
+      <BadgeToast badges={data.badges} />
       <Link href={`/g/${slug}`} className="mb-4 inline-flex items-center gap-1 text-[0.8125rem] font-medium text-muted hover:text-text">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M7.5 2.5 4 6l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
