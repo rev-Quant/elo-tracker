@@ -26,13 +26,20 @@ export default async function HomePage() {
           The rating tracker your board game group deserves. Competitive or casual, FFA or teams — log a match in 10 seconds and settle every argument with data.
         </p>
         <div className="mt-5 flex justify-center gap-3">
-          <LinkButton href="/discover">Find a group</LinkButton>
-          <LinkButton href="/groups" variant="secondary">Create a group</LinkButton>
+          <LinkButton href="/groups">Sign up free</LinkButton>
+          <LinkButton href="/discover" variant="secondary">Browse groups</LinkButton>
         </div>
       </div>
 
+      {/* Auth form — immediately visible */}
+      <div className="mb-10 animate-fade-up stagger-1">
+        <Card glow>
+          <AuthForm />
+        </Card>
+      </div>
+
       {/* Features */}
-      <div className="mb-10 grid gap-3 animate-fade-up stagger-1">
+      <div className="mb-10 grid gap-3 animate-fade-up stagger-2">
         {[
           { emoji: "⚡", title: "10-second logging", body: "Same game, same people, competitive. Literally zero-tap confirmation." },
           { emoji: "📊", title: "OpenSkill ratings", body: "Proven rating math (Plackett-Luce model). Per-game, per-group, always fair." },
@@ -52,11 +59,6 @@ export default async function HomePage() {
           </Card>
         ))}
       </div>
-
-      {/* Auth */}
-      <Card glow className="animate-fade-up stagger-2">
-        <AuthForm />
-      </Card>
 
       {/* Footer */}
       <footer className="mt-10 text-center text-[0.6875rem] text-muted-dim space-x-4">
