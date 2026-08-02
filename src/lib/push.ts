@@ -1,10 +1,15 @@
 import webpush from "web-push";
 
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY ?? "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:noreply@elo-tracker.com";
+let initialized = false;
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+function ensureVapid() {
+  if (initialized) return;
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return;
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:noreply@elo-tracker.com", pub, priv);
+  initialized = true;
+}
 
 const subscriptions = new Map<string, webpush.PushSubscription>();
 
@@ -18,6 +23,8 @@ export async function sendPush(
   userId: string,
   payload: { title: string; body: string; url?: string; tag?: string },
 ) {
+  ensureVapid();
+  if (!initialized) return;
   const sub = subscriptions.get(userId);
   if (!sub) return;
   try {
@@ -29,3 +36,4 @@ export async function sendPush(
 }
 
 export { VAPID_PUBLIC };
+export const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
