@@ -7,6 +7,7 @@ import { ApiRequestError, api } from "@/lib/api-client";
 import { queueMatch } from "@/lib/offline";
 import { UndoButton } from "@/components/match-actions";
 import { Confetti } from "@/components/confetti";
+import { StatBomb } from "@/components/stat-bomb";
 
 export interface GameOption {
   id: string;
@@ -254,6 +255,17 @@ export function LogMatchForm({
     return (
       <div className="animate-scale-in space-y-4">
         <Confetti trigger={showConfetti} />
+        <StatBomb
+          winners={result.participants.filter((p) => p.finalRank === 1).map((p) => p.displayName)}
+          gameName={game?.name ?? "Unknown"}
+          groupName=""
+          rank={`${result.participants.filter((p) => p.finalRank === 1).length}st of ${result.participants.length}`}
+          participants={result.participants.map((p) => ({
+            displayName: p.displayName,
+            ratingBefore: p.ratingBefore,
+            ratingAfter: p.ratingAfter,
+          }))}
+        />
         <Card glow>
           <p className="mb-3 text-[0.875rem] font-semibold">Match logged</p>
           <ul className="divide-y divide-border">
@@ -546,6 +558,20 @@ export function LogMatchForm({
           <p className="mt-2 text-[0.6875rem] text-muted-dim">Casual games don&apos;t affect ratings.</p>
         ) : null}
       </section>
+
+      {order.length >= 2 && game ? (
+        <div className="mt-2 text-[0.6875rem] text-muted-dim">
+          🔮 Oracle says:{" "}
+          {order.slice(0, 2).map((id, i) => (
+            <span key={id}>
+              {i > 0 ? " vs " : ""}
+              <span className="font-medium text-text-dim">{byId.get(id)?.displayName}</span>
+            </span>
+          ))}
+          {" "}— favorite:{" "}
+          <span className="font-semibold text-accent">{byId.get(order[0])?.displayName}</span>
+        </div>
+      ) : null}
 
       <ErrorBanner>{error ?? countError}</ErrorBanner>
 
