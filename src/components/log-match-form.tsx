@@ -194,7 +194,6 @@ export function LogMatchForm({
 
   // Persist the last team A so "Rematch" can replay it.
   const lastTeamARef = useRef<string[]>([]);
-  const teamBList = order.filter((id) => !teamA.includes(id));
 
   const countError =
     game && order.length < game.minPlayers
