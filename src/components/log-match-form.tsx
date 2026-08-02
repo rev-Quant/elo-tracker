@@ -47,6 +47,7 @@ export function LogMatchForm({
   members,
   defaultGameId,
   defaultParticipantIds,
+  currentUserId,
 }: {
   slug: string;
   games: GameOption[];
