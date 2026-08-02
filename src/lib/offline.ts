@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * Persists the last failed log-match submission to localStorage so a retry
@@ -21,9 +21,9 @@ export function queueMatch(body: unknown, slug: string) {
   } catch { /* quota exceeded, drop silently */ }
 }
 
-export function dequeueMatch(): QueuedMatch | null {
+function loadQueuedMatch(): QueuedMatch | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : null;
     if (!raw) return null;
     localStorage.removeItem(KEY);
     return JSON.parse(raw);
@@ -33,11 +33,5 @@ export function dequeueMatch(): QueuedMatch | null {
 }
 
 export function useQueuedMatch() {
-  const [queued, setQueued] = useState<QueuedMatch | null>(null);
-
-  useEffect(() => {
-    setQueued(dequeueMatch());
-  }, []);
-
-  return queued;
+  return useState(loadQueuedMatch)[0];
 }

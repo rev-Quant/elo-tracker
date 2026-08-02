@@ -1,19 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Card } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
-import { dequeueMatch, type QueuedMatch } from "@/lib/offline";
+import { type QueuedMatch, loadQueuedMatch } from "@/lib/offline";
+
+function loadQueued(): QueuedMatch | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("elo-log-queue");
+    if (!raw) return null;
+    localStorage.removeItem("elo-log-queue");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 export function OfflineRetry() {
-  const [match, setMatch] = useState<QueuedMatch | null>(null);
+  const [match, setMatch] = useState(loadQueued);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    setMatch(dequeueMatch());
-  }, []);
 
   if (!match || done) return null;
 
