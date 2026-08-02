@@ -389,7 +389,7 @@ export function LogMatchForm({
                 }
                 className="rounded-full border border-border px-3 py-1.5 text-sm text-muted hover:text-text"
               >
-                {byId.get(id)?.displayName} â†’ {teamA.includes(id) ? "B" : "A"}
+                {byId.get(id)?.displayName} → {teamA.includes(id) ? "B" : "A"}
               </button>
             ))}
           </div>
@@ -431,28 +431,36 @@ export function LogMatchForm({
                 {order.map((userId, index) => (
                   <li
                     key={userId}
-                    className="flex items-center gap-2 border-b border-border px-3 py-2 last:border-0"
+                    className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0"
                   >
-                    <span className="w-5 text-sm text-muted tnum">{index + 1}</span>
-                    <span className="flex-1 truncate text-sm">{byId.get(userId)?.displayName}</span>
-                    <button
-                      type="button"
-                      aria-label={`Move ${byId.get(userId)?.displayName} up`}
-                      disabled={index === 0}
-                      onClick={() => move(index, -1)}
-                      className="grid size-8 place-items-center rounded-lg border border-border text-muted disabled:opacity-30"
-                    >
-                      â–²
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Move ${byId.get(userId)?.displayName} down`}
-                      disabled={index === order.length - 1}
-                      onClick={() => move(index, 1)}
-                      className="grid size-8 place-items-center rounded-lg border border-border text-muted disabled:opacity-30"
-                    >
-                      â–¼
-                    </button>
+                    <span className="w-6 text-center text-sm font-semibold tabular-nums text-muted-dim">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1 truncate text-sm font-medium">{byId.get(userId)?.displayName}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        aria-label={`Move ${byId.get(userId)?.displayName} up`}
+                        disabled={index === 0}
+                        onClick={() => move(index, -1)}
+                        className="grid size-7 place-items-center rounded-md border border-border text-muted transition hover:border-muted hover:text-text active:scale-90 disabled:opacity-20 disabled:pointer-events-none"
+                      >
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                          <path d="M1 5 5 1l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Move ${byId.get(userId)?.displayName} down`}
+                        disabled={index === order.length - 1}
+                        onClick={() => move(index, 1)}
+                        className="grid size-7 place-items-center rounded-md border border-border text-muted transition hover:border-muted hover:text-text active:scale-90 disabled:opacity-20 disabled:pointer-events-none"
+                      >
+                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+                          <path d="M1 1 5 5l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
