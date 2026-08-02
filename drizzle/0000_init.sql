@@ -199,6 +199,30 @@ CREATE TABLE "teams" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "gauntlets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"challenger_id" uuid NOT NULL,
+	"opponent_id" uuid NOT NULL,
+	"group_id" uuid NOT NULL,
+	"game_id" uuid NOT NULL,
+	"best_of" integer DEFAULT 3 NOT NULL,
+	"status" text DEFAULT 'active' NOT NULL,
+	"challenger_wins" integer DEFAULT 0 NOT NULL,
+	"opponent_wins" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "rating_shields" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"group_id" uuid NOT NULL,
+	"used" boolean DEFAULT false NOT NULL,
+	"earned_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"used_at" timestamp with time zone,
+	"match_id" uuid
+);
+--> statement-breakpoint
 ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_created_by_user_id_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "games" ADD CONSTRAINT "games_created_by_user_id_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -229,6 +253,12 @@ ALTER TABLE "team_ratings" ADD CONSTRAINT "team_ratings_team_id_teams_id_fk" FOR
 ALTER TABLE "team_ratings" ADD CONSTRAINT "team_ratings_game_id_games_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."games"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "teams" ADD CONSTRAINT "teams_group_id_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."groups"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "teams" ADD CONSTRAINT "teams_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gauntlets" ADD CONSTRAINT "gauntlets_challenger_id_users_id_fk" FOREIGN KEY ("challenger_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gauntlets" ADD CONSTRAINT "gauntlets_opponent_id_users_id_fk" FOREIGN KEY ("opponent_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gauntlets" ADD CONSTRAINT "gauntlets_group_id_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."groups"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "gauntlets" ADD CONSTRAINT "gauntlets_game_id_games_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."games"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rating_shields" ADD CONSTRAINT "rating_shields_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rating_shields" ADD CONSTRAINT "rating_shields_group_id_groups_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."groups"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "password_reset_tokens_user_idx" ON "password_reset_tokens" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree (lower("email")) WHERE "users"."email" is not null;--> statement-breakpoint
 CREATE INDEX "users_display_name_idx" ON "users" USING btree ("display_name");--> statement-breakpoint
@@ -245,4 +275,6 @@ CREATE UNIQUE INDEX "matches_group_idempotency_unique" ON "matches" USING btree 
 CREATE INDEX "current_ratings_leaderboard_idx" ON "current_ratings" USING btree ("group_id","game_id","rating_pool","display_rating" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "rating_snapshots_user_game_group_idx" ON "rating_snapshots" USING btree ("user_id","game_id","group_id","created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "rating_snapshots_match_idx" ON "rating_snapshots" USING btree ("match_id");--> statement-breakpoint
-CREATE INDEX "teams_group_idx" ON "teams" USING btree ("group_id");
+CREATE INDEX "teams_group_idx" ON "teams" USING btree ("group_id");--> statement-breakpoint
+CREATE INDEX "gauntlets_status_idx" ON "gauntlets" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "rating_shields_user_group_idx" ON "rating_shields" USING btree ("user_id","group_id");

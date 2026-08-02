@@ -5,3 +5,4 @@ export * from "./groups";
 export * from "./matches";
 export * from "./ratings";
 export * from "./teams";
+export * from "./phase3";

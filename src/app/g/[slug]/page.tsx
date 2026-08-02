@@ -5,6 +5,7 @@ import { RecentMatches } from "@/components/recent-matches";
 import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { TickerNumber, Sparkline, TierBadge } from "@/components/animations";
+import { findNemesis, findBottomPlayer } from "@/server/nemesis";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -39,11 +40,12 @@ export default async function GroupPage({ params, searchParams }: Props) {
   const played = await gamesPlayedBy(group.id);
   const selected = played.find((g) => g.slug === gameSlugParam) ?? played[0] ?? null;
 
-  const [standings, recent, idleDays, streak] = await Promise.all([
+  const [standings, recent, idleDays, streak, nemesis] = await Promise.all([
     selected ? leaderboard(group.id, selected.id) : Promise.resolve([]),
     history(group.id, { limit: 8 }),
     daysSinceLastMatch(group.id),
     currentStreak(session.userId, group.id),
+    findNemesis(session.userId, group.id),
   ]);
 
   const stale = idleDays !== null && idleDays >= 14;
@@ -91,6 +93,28 @@ export default async function GroupPage({ params, searchParams }: Props) {
       {isSpectator ? (
         <Card className="mb-5 text-center text-sm text-muted">
           You&apos;re a spectator — follow along, but you can&apos;t log games.
+        </Card>
+      ) : null}
+
+      {nemesis ? (
+        <Card glow className="mb-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{nemesis.isNemesis ? "😈" : "🐣"}</span>
+            <div>
+              <p className="text-[0.8125rem] font-semibold">
+                {nemesis.isNemesis ? "Nemesis: " : "Prey: "}
+                {nemesis.opponentName}
+              </p>
+              <p className="text-[0.6875rem] text-muted-dim tabular-nums">
+                {nemesis.myWins}-{nemesis.myLosses} ·{" "}
+                {nemesis.isNemesis
+                  ? `Trailing by ${Math.abs(nemesis.gap)}`
+                  : `Leading by ${nemesis.gap}`}
+                {" · "}
+                {Math.round(nemesis.opponentRating)} vs {Math.round(nemesis.myRating)}
+              </p>
+            </div>
+          </div>
         </Card>
       ) : null}
 
