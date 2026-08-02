@@ -68,8 +68,8 @@ export default async function GroupPage({ params, searchParams }: Props) {
           <h1 className="text-[1.65rem] font-bold leading-tight tracking-[-0.02em]">
             {group.name}
           </h1>
-          <Link href={`/g/${slug}/settings`} className="shrink-0 text-[0.8125rem] font-medium text-muted hover:text-text">
-            Settings
+          <Link href={`/g/${slug}/settings`} className="shrink-0 rounded-lg border border-border px-3 py-1 text-[0.75rem] font-medium text-muted hover:border-muted hover:text-text">
+            ⚙ Settings
           </Link>
         </div>
         <p className="mt-1.5 text-[0.75rem] text-muted-dim">
