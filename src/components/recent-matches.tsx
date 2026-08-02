@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Delta, Card, SectionTitle } from "@/components/ui";
 import { VoidButton } from "@/components/match-actions";
+import { ReactButton } from "@/components/react-button";
 import type { MatchSummary } from "@/server/matches/queries";
 
 export function RecentMatches({
@@ -56,6 +57,7 @@ function MatchRow({
           {match.playedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </time>
         {canVoid ? <VoidButton matchId={match.id} /> : null}
+        <ReactButton matchId={match.id} />
       </button>
       {expanded ? (
         <div className="border-t border-border bg-surface-2/50 px-4 py-3">

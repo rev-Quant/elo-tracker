@@ -6,3 +6,4 @@ export * from "./matches";
 export * from "./ratings";
 export * from "./teams";
 export * from "./phase3";
+export * from "./phase4";

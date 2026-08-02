@@ -46,6 +46,8 @@ export const matches = pgTable(
     playedAt: timestamp("played_at", { withTimezone: true }).notNull().defaultNow(),
     durationSeconds: integer("duration_seconds"),
     notes: text("notes"),
+    /** Base64-encoded photo attachment (spec v2). */
+    photoUrl: text("photo_url"),
 
     status: matchStatusEnum("status").notNull().default("pending"),
 

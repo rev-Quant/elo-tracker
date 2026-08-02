@@ -6,6 +6,7 @@ import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { TickerNumber, Sparkline, TierBadge } from "@/components/animations";
 import { findNemesis, findBottomPlayer } from "@/server/nemesis";
+import { ReactButton } from "@/components/react-button";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";

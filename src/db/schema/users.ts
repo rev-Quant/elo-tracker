@@ -47,6 +47,9 @@ export const users = pgTable(
     /** Set when email is verified. NULL until then. */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
 
+    /** Opt-in for global cross-group leaderboard. */
+    showOnGlobalLeaderboard: boolean("show_on_global_leaderboard").notNull().default(false),
+
     /**
      * Soft delete (spec §10 "Account deletion"). Deleting anonymises
      * display_name and clears credentials but retains match rows.
