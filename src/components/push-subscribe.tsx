@@ -4,8 +4,17 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { Card, Button } from "@/components/ui";
 
-export function NotificationBanner() {
-  const [status, setStatus] = useState<"prompt" | "loading" | "error" | "done" | "hidden">("prompt");
+const DISMISSED_KEY = "elo-push-banner-dismissed";
+
+function wasDismissed() {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(DISMISSED_KEY) === "1";
+}
+
+export function NotificationBanner({ showAlways = false }: { showAlways?: boolean }) {
+  const [status, setStatus] = useState<"prompt" | "loading" | "error" | "done" | "hidden">(
+    showAlways || !wasDismissed() ? "prompt" : "hidden",
+  );
   const [error, setError] = useState("");
 
   if (status === "hidden" || status === "done") return null;
@@ -14,22 +23,24 @@ export function NotificationBanner() {
     setStatus("loading");
     setError("");
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (!reg) {
-        const fresh = await navigator.serviceWorker.register("/sw.js");
-        await fresh.update();
-      }
-      const sw = await navigator.serviceWorker.ready;
-      const sub = await sw.pushManager.subscribe({
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlB64("BOEJpx6BTxtFc2-0Zj8EiQIPSToJcvdq3yjP7Zoi4SIhUgwJdlHBLOjrNB4bI_2iavYHq9SmC34VJEwIGLjtY8E"),
       });
       await api.post("/api/push/subscribe", { subscription: sub.toJSON() });
       setStatus("done");
     } catch (e: any) {
-      setError(e?.message || "Try again");
+      setError(e?.message || "Push not available");
       setStatus("error");
     }
+  }
+
+  function dismiss() {
+    localStorage.setItem(DISMISSED_KEY, "1");
+    setStatus("hidden");
   }
 
   return (
@@ -43,7 +54,7 @@ export function NotificationBanner() {
             <Button size="sm" onClick={subscribe} disabled={status === "loading"}>
               {status === "loading" ? "..." : "Enable"}
             </Button>
-            <button onClick={() => setStatus("hidden")} className="text-[0.6875rem] text-muted-dim">No thanks</button>
+            <button onClick={dismiss} className="text-[0.6875rem] text-muted-dim">No thanks</button>
           </div>
         </div>
       )}
