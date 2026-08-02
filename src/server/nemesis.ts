@@ -134,7 +134,7 @@ async function getRating(
  * Returns probability [0-1] for each participant.
  */
 export function predictMatch(
-  participants: { userId: string; rating: { mu: number; sigma: number } }[],
+  participants: { userId: string; rating: Rating }[],
 ): { userId: string; winProb: number }[] {
   if (participants.length < 2) return participants.map((p) => ({ userId: p.userId, winProb: 0.5 }));
 

@@ -30,6 +30,8 @@ interface LoggedResult {
     userId: string;
     displayName: string;
     finalRank: number;
+    ratingBefore: number | null;
+    ratingAfter: number | null;
     ratingDelta: number | null;
   }[];
 }
