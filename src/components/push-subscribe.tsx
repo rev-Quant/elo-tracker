@@ -6,15 +6,12 @@ import { Card, Button } from "@/components/ui";
 
 const DISMISSED_KEY = "elo-push-banner-dismissed";
 
-function wasDismissed() {
-  if (typeof window === "undefined") return true;
-  return localStorage.getItem(DISMISSED_KEY) === "1";
-}
-
 export function NotificationBanner({ showAlways = false }: { showAlways?: boolean }) {
-  const [status, setStatus] = useState<"prompt" | "loading" | "error" | "done" | "hidden">(
-    showAlways || !wasDismissed() ? "prompt" : "hidden",
-  );
+  const [status, setStatus] = useState<"prompt" | "loading" | "error" | "done" | "hidden">(() => {
+    if (showAlways) return "prompt";
+    try { return localStorage.getItem("elo-push-banner-dismissed") === "1" ? "hidden" : "prompt"; }
+    catch { return "prompt"; }
+  });
   const [error, setError] = useState("");
 
   if (status === "hidden" || status === "done") return null;
