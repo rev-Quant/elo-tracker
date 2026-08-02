@@ -14,12 +14,15 @@ const BASE_URL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
+const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
+
 export async function sendVerificationEmail(to: string, userId: string) {
   const c = client();
-  if (!c) return;
+  if (!c) { console.warn("RESEND_API_KEY not set, skipping email"); return; }
   const link = `${BASE_URL}/api/auth/verify?userId=${encodeURIComponent(userId)}`;
-  await c.emails.send({
-    from: "Board Game Tracker <noreply@elo-tracker.com>",
+  try {
+    const result = await c.emails.send({
+    from: `${FROM}`,
     to: [to],
     subject: "Verify your email — Board Game Tracker",
     html: `
@@ -31,15 +34,19 @@ export async function sendVerificationEmail(to: string, userId: string) {
       </div>
     `,
   });
+    if (result.error) console.error("Resend verification error:", result.error);
+    else console.log("Verification email sent to", to);
+  } catch (e) { console.error("Email send failed:", e); }
 }
 
 export async function sendPasswordResetEmail(to: string, token: string) {
   const c = client();
-  if (!c) return;
+  if (!c) { console.warn("RESEND_API_KEY not set, skipping email"); return; }
   const link = `${BASE_URL}/reset?token=${encodeURIComponent(token)}`;
-  await c.emails.send({
-    from: "Board Game Tracker <noreply@elo-tracker.com>",
-    to: [to],
+  try {
+    const result = await c.emails.send({
+      from: FROM,
+      to: [to],
     subject: "Reset your password — Board Game Tracker",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
@@ -49,5 +56,8 @@ export async function sendPasswordResetEmail(to: string, token: string) {
         <p style="color:#889;font-size:12px;margin:16px 0 0">If you didn't request this, ignore this email.</p>
       </div>
     `,
-  });
+    });
+    if (result.error) console.error("Resend reset error:", result.error);
+    else console.log("Reset email sent to", to);
+  } catch (e) { console.error("Reset email send failed:", e); }
 }

@@ -18,7 +18,7 @@ export const POST = handler(async (request: Request) => {
   await startSession({ userId: user.id, isGuest: false });
 
   // Fire-and-forget: don't block the response on email delivery
-  if (user.email) sendVerificationEmail(user.email, user.id).catch(() => {});
+  if (user.email) sendVerificationEmail(user.email, user.id).catch((e) => console.error("Verification email failed:", e));
 
   return json({ user: toPublicUser(user), verifyToken }, { status: 201 });
 });
