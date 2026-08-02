@@ -15,6 +15,9 @@ const schema = z.object({
   /** HMAC key for session cookies. Generate with: openssl rand -base64 48 */
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
 
+  /** Resend API key. Optional — email sending is skipped if unset. */
+  RESEND_API_KEY: z.string().optional(),
+
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
