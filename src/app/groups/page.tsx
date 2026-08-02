@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreateGroupForm, JoinGroupForm } from "@/components/group-forms";
 import { Card, EmptyState, PageTitle, SectionTitle } from "@/components/ui";
+import { LogoutButton } from "@/components/logout-button";
 import { getSession } from "@/lib/auth/session";
 import { listForUser } from "@/server/groups/service";
 import { requireUser } from "@/server/auth/service";
@@ -28,6 +29,11 @@ export default async function GroupsPage() {
 
   return (
     <main>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[0.75rem] text-muted-dim">Signed in as {user.displayName}</p>
+        <LogoutButton />
+      </div>
+
       <PageTitle sub="Your groups">Game tracker</PageTitle>
 
       {groups.length > 0 ? (
