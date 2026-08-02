@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type Queryable, db as defaultDb } from "@/db";
 import { currentRatings, games, matches, ratingSnapshots, users } from "@/db/schema";
 
@@ -16,6 +16,8 @@ export interface LeaderboardEntry {
   wins: number;
   losses: number;
   lastPlayedAt: Date | null;
+  /** Last 10 display ratings for sparkline mini-graphs. */
+  recentRatings: number[];
 }
 
 /**
@@ -57,7 +59,7 @@ export async function leaderboard(
   const entries = rows.map((row, index) => {
     if (previous === null || row.displayRating !== previous) rank = index + 1;
     previous = row.displayRating;
-    return { rank, previousRank: null as number | null, ...row };
+    return { rank, previousRank: null as number | null, recentRatings: [] as number[], ...row };
   });
 
   const userIds = entries.map((e) => e.userId);
@@ -104,6 +106,38 @@ export async function leaderboard(
         if (pr !== undefined) entry.previousRank = pr;
       }
     }
+  }
+
+  // Sparkline data: last 10 display ratings per player.
+  const ratingsHistory = new Map<string, number[]>();
+  if (userIds.length > 0) {
+    const historyRows = await db
+      .select({ userId: ratingSnapshots.userId, displayAfter: ratingSnapshots.displayAfter })
+      .from(ratingSnapshots)
+      .where(
+        and(
+          eq(ratingSnapshots.groupId, groupId),
+          eq(ratingSnapshots.gameId, gameId),
+          eq(ratingSnapshots.ratingPool, "competitive"),
+          eq(ratingSnapshots.isReversal, false),
+          inArray(ratingSnapshots.userId, userIds),
+        ),
+      )
+      .orderBy(desc(ratingSnapshots.createdAt))
+      .limit(userIds.length * 10);
+
+    for (const r of historyRows) {
+      const list = ratingsHistory.get(r.userId) ?? [];
+      if (list.length < 10) list.unshift(r.displayAfter);
+      ratingsHistory.set(r.userId, list);
+    }
+  }
+
+  // Add the current rating as the final sparkline point.
+  for (const entry of entries) {
+    const list = ratingsHistory.get(entry.userId) ?? [entry.displayRating];
+    if (list[list.length - 1] !== entry.displayRating) list.push(entry.displayRating);
+    entry.recentRatings = list;
   }
 
   return entries;

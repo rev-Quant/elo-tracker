@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OfflineRetry } from "@/components/offline-retry";
 import { RecentMatches } from "@/components/recent-matches";
 import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
+import { TickerNumber, Sparkline, TierBadge } from "@/components/animations";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -150,10 +151,12 @@ export default async function GroupPage({ params, searchParams }: Props) {
               <li key={entry.userId}>
                 <Link
                   href={`/g/${slug}/u/${entry.userId}`}
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2"
+                  className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2 ${
+                    entry.rank === 1 ? "ring-1 ring-amber/30 bg-amber/[0.03]" : ""
+                  }`}
                 >
                   <span className="w-6 shrink-0 text-center text-[0.8125rem] font-semibold tabular-nums text-muted-dim">
-                    {entry.rank}
+                    {entry.rank === 1 ? "👑" : entry.rank}
                     {arrow ? (
                       <span className={`ml-0.5 text-[0.625rem] ${arrow === "▲" ? "text-up" : "text-down"}`}>
                         {arrow}
@@ -161,13 +164,18 @@ export default async function GroupPage({ params, searchParams }: Props) {
                     ) : null}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.875rem] font-medium">{entry.displayName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-[0.875rem] font-medium">{entry.displayName}</p>
+                      <TierBadge rating={entry.displayRating} />
+                    </div>
                     <WinRateBar wins={entry.wins} losses={entry.losses} className="mt-1.5" />
                   </div>
+                  <Sparkline points={entry.recentRatings ?? []} className="mr-1" />
                   <span className="shrink-0 text-right">
-                    <span className="text-[0.9375rem] font-bold tabular-nums">
-                      {Math.round(entry.displayRating)}
-                    </span>
+                    <TickerNumber
+                      value={Math.round(entry.displayRating)}
+                      className="text-[0.9375rem] font-bold"
+                    />
                   </span>
                 </Link>
               </li>

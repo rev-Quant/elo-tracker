@@ -100,6 +100,12 @@ body {
   50% { box-shadow: 0 0 0 8px transparent; }
 }
 
+@keyframes float-up {
+  0% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 0.6; transform: translateY(-24px); }
+  100% { opacity: 0; transform: translateY(-32px); }
+}
+
 .animate-fade-up {
   animation: fade-up 0.35s ease-out both;
 }
