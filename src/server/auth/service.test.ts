@@ -49,7 +49,7 @@ describe("register", () => {
 describe("login", () => {
   it("accepts correct credentials", async () => {
     const email = uniqueEmail();
-    const {created: created} = await register({ displayName: "Bob", email, password: "hunter2hunter2" }, t.db);
+    const { user: created } = await register({ displayName: "Bob", email, password: "hunter2hunter2" }, t.db);
     const found = await login({ email, password: "hunter2hunter2" }, t.db);
     expect(found.id).toBe(created.id);
   });
@@ -104,7 +104,7 @@ describe("createGuest", () => {
   });
 
   it("records who created the guest", async () => {
-    const {host: host} = await register(
+    const { user: host } = await register(
       { displayName: "Host", email: uniqueEmail(), password: "a good password" },
       t.db,
     );
