@@ -34,11 +34,11 @@ interface LoggedResult {
 }
 
 /**
- * The 15-second logging flow (spec Â§3).
+ * The 15-second logging flow (spec §3).
  *
  * Ordering uses explicit move buttons rather than drag handles. Drag-and-drop
  * that works reliably on touch needs a dependency and a keyboard-accessible
- * fallback; â–²â–¼ is instantly usable, screen-reader friendly, and about as fast
+ * fallback; up/down buttons are instantly usable, screen-reader friendly, and about as fast
  * for the 2-6 players a typical match has.
  */
 export function LogMatchForm({
@@ -59,7 +59,7 @@ export function LogMatchForm({
   const router = useRouter();
 
   const [gameId, setGameId] = useState(defaultGameId ?? games[0]?.id ?? "");
-  // Aggressive defaulting: same game, same people as last time (spec Â§3).
+  // Aggressive defaulting: same game, same people as last time (spec §3).
   const [order, setOrder] = useState<string[]>(
     defaultParticipantIds.length > 0 ? defaultParticipantIds : members.slice(0, 2).map((m) => m.userId),
   );
@@ -76,7 +76,7 @@ export function LogMatchForm({
   const [guestName, setGuestName] = useState("");
   const [addingGuest, setAddingGuest] = useState(false);
 
-  // Team mode. Two buckets is what a table actually negotiates (spec Â§3);
+  // Team mode. Two buckets is what a table actually negotiates (spec §3);
   // the API accepts up to 8 teams if a richer UI is ever needed.
   const [mode, setMode] = useState<"ffa" | "teams">("ffa");
   const [teamA, setTeamA] = useState<string[]>([]);
@@ -169,7 +169,7 @@ export function LogMatchForm({
     });
   }
 
-  /** Shuffle the selected players into two even buckets (spec Â§3). */
+  /** Shuffle the selected players into two even buckets (spec §3). */
   function randomTeams() {
     const shuffled = [...order];
     for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -212,7 +212,7 @@ export function LogMatchForm({
               matchType,
               teamMode: "ffa" as const,
               participants: order.map((userId, index) => ({ userId, rank: index + 1 })),
-              // Lets a retry after a flaky connection not double-log (spec Â§10).
+              // Lets a retry after a flaky connection not double-log (spec §10).
               idempotencyKey: crypto.randomUUID(),
             };
 
