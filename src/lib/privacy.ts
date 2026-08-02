@@ -1,21 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const KEY = "elo-hide-rating";
 
-function get(): boolean {
+function load(): boolean {
   if (typeof window === "undefined") return false;
   return localStorage.getItem(KEY) === "1";
 }
 
 export function useHideRating() {
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    const saved = get();
-    setHidden(saved);
-  }, []);
+  const [hidden, setHidden] = useState(load);
 
   function toggle() {
     const next = !hidden;
