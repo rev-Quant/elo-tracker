@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Card } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
-import { type QueuedMatch, loadQueuedMatch } from "@/lib/offline";
+import type { QueuedMatch } from "@/lib/offline";
 
 function loadQueued(): QueuedMatch | null {
   if (typeof window === "undefined") return null;
