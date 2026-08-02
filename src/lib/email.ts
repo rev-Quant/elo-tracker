@@ -10,9 +10,9 @@ function client(): Resend | null {
   return resend;
 }
 
-const BASE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL
+  ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+  ?? "http://localhost:3000";
 
 const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 
