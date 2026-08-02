@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, Card, Chip, Delta, ErrorBanner, Field } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
 import { queueMatch } from "@/lib/offline";
@@ -65,6 +65,7 @@ export function LogMatchForm({
   );
   const [matchType, setMatchType] = useState<"competitive" | "casual">("competitive");
   const [showOptions, setShowOptions] = useState(false);
+  const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LoggedResult | null>(null);
@@ -117,6 +118,7 @@ export function LogMatchForm({
   const roster = useMemo(() => [...members, ...extraMembers], [members, extraMembers]);
   const game = [...games, ...extraGames].find((g) => g.id === gameId) ?? null;
   const winnerOnly = game?.rankingMode === "winner_only";
+  const TAGS = ["Close game", "Comeback", "New strategy", "Trash talk", "Upset", "Sweep"];
   // A teams-only game (Pool, Codenames) forces team mode; an FFA-only game
   // forces FFA. The toggle only matters when the game supports both.
   const effectiveMode: "ffa" | "teams" = !game
@@ -180,7 +182,18 @@ export function LogMatchForm({
     setTeamA(shuffled.slice(0, half));
   }
 
+  /** Reuse the last team composition (if any). */
+  function rematchTeams() {
+    if (lastTeamARef.current.length > 0) {
+      setTeamA(lastTeamARef.current);
+    }
+  }
+
   const teamAList = order.filter((id) => teamA.includes(id));
+  const teamBList = order.filter((id) => !teamA.includes(id));
+
+  // Persist the last team A so "Rematch" can replay it.
+  const lastTeamARef = useRef<string[]>([]);
   const teamBList = order.filter((id) => !teamA.includes(id));
 
   const countError =
@@ -206,6 +219,7 @@ export function LogMatchForm({
                 { name: "Team B", rank: winningTeam === "B" ? 1 : 2, userIds: teamBList },
               ],
               idempotencyKey: crypto.randomUUID(),
+              notes: notes || undefined,
             }
           : {
               gameId,
@@ -214,6 +228,7 @@ export function LogMatchForm({
               participants: order.map((userId, index) => ({ userId, rank: index + 1 })),
               // Lets a retry after a flaky connection not double-log (spec §10).
               idempotencyKey: crypto.randomUUID(),
+              notes: notes || undefined,
             };
 
     try {
@@ -222,6 +237,8 @@ export function LogMatchForm({
       if (payload.participants.some((p) => p.userId === currentUserId && p.finalRank === 1)) {
         setShowConfetti(true);
       }
+      // Save team comp for Rematch button
+      if (effectiveMode === "teams") lastTeamARef.current = [...teamA];
       router.refresh();
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.detail.message : "Couldn't log that match.";
@@ -356,9 +373,14 @@ export function LogMatchForm({
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Teams</h2>
-            <button type="button" onClick={randomTeams} className="text-sm text-accent hover:underline">
-              Random teams
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={randomTeams} className="text-sm text-accent hover:underline">
+                Random teams
+              </button>
+              <button type="button" onClick={rematchTeams} className="text-sm text-muted hover:underline">
+                Rematch
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["A", "B"] as const).map((side) => {
@@ -491,13 +513,35 @@ export function LogMatchForm({
           {showOptions ? "▲" : "▼"} More options
         </button>
         {showOptions ? (
-          <div className="mt-3 flex gap-2">
-            {(["competitive", "casual"] as const).map((type) => (
-              <Chip key={type} active={matchType === type} onClick={() => setMatchType(type)}>
-                {type}
-              </Chip>
-            ))}
-          </div>
+          <>
+            <div className="mt-3 flex gap-2">
+              {(["competitive", "casual"] as const).map((type) => (
+                <Chip key={type} active={matchType === type} onClick={() => setMatchType(type)}>
+                  {type}
+                </Chip>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {TAGS.map((tag) => {
+                const active = notes.split(", ").includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      const parts = notes.split(", ").filter(Boolean);
+                      setNotes(active ? parts.filter((t) => t !== tag).join(", ") : [...parts, tag].join(", "));
+                    }}
+                    className={`rounded-full border px-2.5 py-1 text-[0.6875rem] font-medium transition ${
+                      active ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-muted-dim hover:border-muted"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         ) : null}
         {matchType === "casual" ? (
           <p className="mt-2 text-[0.6875rem] text-muted-dim">Casual games don&apos;t affect ratings.</p>
