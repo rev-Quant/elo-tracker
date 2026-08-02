@@ -9,6 +9,7 @@ import { findNemesis, findBottomPlayer } from "@/server/nemesis";
 import { SeasonFilter } from "@/components/phase5-ui";
 import { listSeasons } from "@/server/seasons/service";
 import { ReactButton } from "@/components/react-button";
+import { NotificationBanner } from "@/components/push-subscribe";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -58,6 +59,7 @@ export default async function GroupPage({ params, searchParams }: Props) {
   return (
     <main>
       <OfflineRetry />
+      <NotificationBanner />
 
       <GroupSwitcher currentSlug={slug} userId={session.userId} />
 

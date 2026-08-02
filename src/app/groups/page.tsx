@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CreateGroupForm, JoinGroupForm } from "@/components/group-forms";
 import { Card, EmptyState, PageTitle, SectionTitle } from "@/components/ui";
 import { LogoutButton } from "@/components/logout-button";
+import { NotificationBanner } from "@/components/push-subscribe";
 import { getSession } from "@/lib/auth/session";
 import { listForUser } from "@/server/groups/service";
 import { requireUser } from "@/server/auth/service";
@@ -33,6 +34,8 @@ export default async function GroupsPage() {
         <p className="text-[0.75rem] text-muted-dim">Signed in as {user.displayName}</p>
         <LogoutButton />
       </div>
+
+      <NotificationBanner />
 
       <PageTitle sub="Your groups">Game tracker</PageTitle>
 
