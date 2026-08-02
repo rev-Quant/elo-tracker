@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorBanner, Field, SectionTitle } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
+import { useHideRating } from "@/lib/privacy";
 
 interface Props {
   slug: string;
@@ -20,6 +21,8 @@ export function GroupSettingsForm({ slug, group, canDelete }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const { hidden, toggle } = useHideRating();
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,6 +88,19 @@ export function GroupSettingsForm({ slug, group, canDelete }: Props) {
           {saved ? "Saved ✓" : pending ? "Saving…" : "Save changes"}
         </Button>
       </form>
+
+      <section>
+        <SectionTitle>Privacy</SectionTitle>
+        <Card>
+          <label className="flex items-center gap-2.5 text-[0.8125rem] font-medium">
+            <input type="checkbox" checked={hidden} onChange={toggle} />
+            <span>Hide my rating from other group members</span>
+          </label>
+          <p className="mt-1.5 text-[0.6875rem] text-muted-dim">
+            You&apos;ll still see your own ratings. Spec §9.
+          </p>
+        </Card>
+      </section>
 
       <section>
         <SectionTitle>Invite link</SectionTitle>

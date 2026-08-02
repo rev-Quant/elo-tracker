@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { VoidButton } from "@/components/match-actions";
+import { OfflineRetry } from "@/components/offline-retry";
 import { Card, EmptyState, LinkButton, SectionTitle, WinRateBar } from "@/components/ui";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
@@ -8,6 +9,7 @@ import { can } from "@/lib/permissions";
 import { daysSinceLastMatch, gamesPlayedBy, leaderboard } from "@/server/groups/queries";
 import { requireMembership } from "@/server/groups/service";
 import { history } from "@/server/matches/queries";
+import { currentStreak } from "@/server/notifications/service";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +37,11 @@ export default async function GroupPage({ params, searchParams }: Props) {
   const played = await gamesPlayedBy(group.id);
   const selected = played.find((g) => g.slug === gameSlugParam) ?? played[0] ?? null;
 
-  const [standings, recent, idleDays] = await Promise.all([
+  const [standings, recent, idleDays, streak] = await Promise.all([
     selected ? leaderboard(group.id, selected.id) : Promise.resolve([]),
     history(group.id, { limit: 8 }),
     daysSinceLastMatch(group.id),
+    currentStreak(session.userId, group.id),
   ]);
 
   const stale = idleDays !== null && idleDays >= 14;
@@ -46,6 +49,8 @@ export default async function GroupPage({ params, searchParams }: Props) {
 
   return (
     <main>
+      <OfflineRetry />
+
       <header className="mb-6">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-[1.65rem] font-bold leading-tight tracking-[-0.02em]">
@@ -83,6 +88,12 @@ export default async function GroupPage({ params, searchParams }: Props) {
       {stale ? (
         <div className="mb-5 rounded-lg border border-amber/20 bg-amber/5 px-3.5 py-3 text-[0.8125rem] leading-relaxed text-amber">
           No games logged in a couple of weeks. Time for a game night?
+        </div>
+      ) : null}
+
+      {streak >= 3 ? (
+        <div className="mb-5 rounded-lg border border-accent/20 bg-accent/5 px-3.5 py-3 text-[0.8125rem] font-medium text-accent">
+          🔥 {streak}-day streak! Log a game today to keep it alive.
         </div>
       ) : null}
 

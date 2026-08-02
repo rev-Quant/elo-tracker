@@ -1,10 +1,18 @@
 import { startSession } from "@/lib/auth/session";
 import { handler, json, parseJson } from "@/lib/http";
+import { check } from "@/lib/rate-limit";
+import { TooManyRequestsError } from "@/lib/errors";
 import { registerSchema } from "@/server/auth/schemas";
 import { register, toPublicUser } from "@/server/auth/service";
 
 export const POST = handler(async (request: Request) => {
   const input = await parseJson(request, registerSchema);
+
+  const key = `register:${request.headers.get("x-forwarded-for") ?? "unknown"}`;
+  if (!check(key, 5, 60 * 60_000)) {
+    throw new TooManyRequestsError("Too many accounts created from this IP. Wait an hour.");
+  }
+
   const user = await register(input);
   await startSession({ userId: user.id, isGuest: false });
   return json({ user: toPublicUser(user) }, { status: 201 });

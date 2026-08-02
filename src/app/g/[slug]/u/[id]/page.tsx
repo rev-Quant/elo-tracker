@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Card, EmptyState, HeroRating, Delta, SectionTitle, WinRateBar, Chip } from "@/components/ui";
+import { Chip, Delta, EmptyState, HeroRating, SectionTitle, WinRateBar, Card } from "@/components/ui";
+import { ClaimAccountBanner } from "@/components/claim-banner";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { requireMembership } from "@/server/groups/service";
@@ -55,9 +56,14 @@ export default async function ProfilePage({ params }: Props) {
             {data.user.displayName}
           </h1>
           {isGuest ? (
-            <span className="mt-0.5 inline-block rounded-full border border-border px-2.5 py-0.5 text-[0.6875rem] font-medium text-muted">
-              Guest
-            </span>
+            <>
+              <span className="mt-0.5 inline-block rounded-full border border-border px-2.5 py-0.5 text-[0.6875rem] font-medium text-muted">
+                Guest
+              </span>
+              <div className="mt-3">
+                <ClaimAccountBanner userId={id} />
+              </div>
+            </>
           ) : null}
         </div>
       </div>
@@ -178,6 +184,16 @@ export default async function ProfilePage({ params }: Props) {
           </Card>
         </section>
       ) : null}
+
+      <div className="mt-6 text-center">
+        <a
+          href="/api/me/export"
+          className="text-[0.8125rem] font-medium text-muted underline-offset-2 hover:text-text hover:underline"
+          download
+        >
+          Export my data
+        </a>
+      </div>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button, Card, Chip, Delta, ErrorBanner, Field } from "@/components/ui";
 import { ApiRequestError, api } from "@/lib/api-client";
+import { queueMatch } from "@/lib/offline";
 import { UndoButton } from "@/components/match-actions";
 
 export interface GameOption {
@@ -189,9 +190,7 @@ export function LogMatchForm({
 
   async function submit() {
     setPending(true);
-    setError(null);
-    try {
-      const body =
+    setError(null);`r`n    const body =
         effectiveMode === "teams"
           ? {
               gameId,
@@ -212,11 +211,15 @@ export function LogMatchForm({
               idempotencyKey: crypto.randomUUID(),
             };
 
-      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
+          try {`r`n      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
       setResult(payload);
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.detail.message : "Couldn't log that match.");
+      const message = err instanceof ApiRequestError ? err.detail.message : "Couldn't log that match.";
+      setError(message);
+      if (!(err instanceof ApiRequestError)) {
+        queueMatch(body, slug);
+      }
     } finally {
       setPending(false);
     }
