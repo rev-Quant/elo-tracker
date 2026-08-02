@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Delta, Card, SectionTitle } from "@/components/ui";
 import { VoidButton } from "@/components/match-actions";
 import { ReactButton } from "@/components/react-button";
+import { ConfirmButton } from "@/components/confirm-button";
 import type { MatchSummary } from "@/server/matches/queries";
 
 export function RecentMatches({
@@ -56,6 +57,7 @@ function MatchRow({
         <time dateTime={match.playedAt.toISOString()} className="shrink-0 text-[0.6875rem] tabular-nums text-muted-dim">
           {match.playedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </time>
+        {match.status === "pending" ? <ConfirmButton matchId={match.id} /> : null}
         {canVoid ? <VoidButton matchId={match.id} /> : null}
         <ReactButton matchId={match.id} />
       </button>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { ThemePicker } from "@/components/theme-picker";
 import { BottomNav } from "@/components/bottom-nav";
+import { PushSubscribe } from "@/components/push-subscribe";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BottomNav />
         <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/80 backdrop-blur-xl">
           <div className="mx-auto flex max-w-lg items-center justify-between px-5 py-2">
+            <PushSubscribe />
             <span className="text-[0.625rem] font-semibold uppercase tracking-[0.15em] text-muted-dim">Theme</span>
             <ThemePicker />
           </div>

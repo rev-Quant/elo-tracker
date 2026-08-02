@@ -6,6 +6,8 @@ import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { TickerNumber, Sparkline, TierBadge } from "@/components/animations";
 import { findNemesis, findBottomPlayer } from "@/server/nemesis";
+import { SeasonFilter } from "@/components/phase5-ui";
+import { listSeasons } from "@/server/seasons/service";
 import { ReactButton } from "@/components/react-button";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
@@ -41,12 +43,13 @@ export default async function GroupPage({ params, searchParams }: Props) {
   const played = await gamesPlayedBy(group.id);
   const selected = played.find((g) => g.slug === gameSlugParam) ?? played[0] ?? null;
 
-  const [standings, recent, idleDays, streak, nemesis] = await Promise.all([
+  const [standings, recent, idleDays, streak, nemesis, seasonList] = await Promise.all([
     selected ? leaderboard(group.id, selected.id) : Promise.resolve([]),
     history(group.id, { limit: 8 }),
     daysSinceLastMatch(group.id),
     currentStreak(session.userId, group.id),
     findNemesis(session.userId, group.id),
+    listSeasons(slug, session.userId),
   ]);
 
   const stale = idleDays !== null && idleDays >= 14;
@@ -129,6 +132,14 @@ export default async function GroupPage({ params, searchParams }: Props) {
         <div className="mb-5 rounded-lg border border-accent/20 bg-accent/5 px-3.5 py-3 text-[0.8125rem] font-medium text-accent">
           🔥 {streak}-day streak! Log a game today to keep it alive.
         </div>
+      ) : null}
+
+      {seasonList.length > 0 ? (
+        <SeasonFilter
+          seasons={seasonList.map((s) => ({ id: s.id, name: s.name }))}
+          current={null}
+          onChange={(id) => { if (id) window.location.search = `?season=${id}`; else window.location.search = ""; }}
+        />
       ) : null}
 
       {played.length > 1 ? (

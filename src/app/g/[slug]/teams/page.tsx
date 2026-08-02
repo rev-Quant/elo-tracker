@@ -5,6 +5,9 @@ import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { requireMembership } from "@/server/groups/service";
 import { listTeams } from "@/server/teams/service";
+import { db } from "@/db";
+import { teamRatings, games } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 

@@ -8,6 +8,7 @@ import { queueMatch } from "@/lib/offline";
 import { UndoButton } from "@/components/match-actions";
 import { Confetti } from "@/components/confetti";
 import { StatBomb } from "@/components/stat-bomb";
+import { PhotoUpload } from "@/components/phase5-ui";
 
 export interface GameOption {
   id: string;
@@ -69,6 +70,7 @@ export function LogMatchForm({
   const [matchType, setMatchType] = useState<"competitive" | "casual">("competitive");
   const [showOptions, setShowOptions] = useState(false);
   const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LoggedResult | null>(null);
@@ -221,16 +223,17 @@ export function LogMatchForm({
                 { name: "Team B", rank: winningTeam === "B" ? 1 : 2, userIds: teamBList },
               ],
               idempotencyKey: crypto.randomUUID(),
-              notes: notes || undefined,
+notes: notes || undefined,
+              photoUrl: photo || undefined,
             }
           : {
               gameId,
               matchType,
               teamMode: "ffa" as const,
               participants: order.map((userId, index) => ({ userId, rank: index + 1 })),
-              // Lets a retry after a flaky connection not double-log (spec §10).
               idempotencyKey: crypto.randomUUID(),
               notes: notes || undefined,
+              photoUrl: photo || undefined,
             };
 
     try {
@@ -559,6 +562,9 @@ export function LogMatchForm({
         {matchType === "casual" ? (
           <p className="mt-2 text-[0.6875rem] text-muted-dim">Casual games don&apos;t affect ratings.</p>
         ) : null}
+        <div className="mt-2">
+          <PhotoUpload onPhoto={setPhoto} />
+        </div>
       </section>
 
       {order.length >= 2 && game ? (
