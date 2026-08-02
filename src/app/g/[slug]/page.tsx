@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OfflineRetry } from "@/components/offline-retry";
 import { RecentMatches } from "@/components/recent-matches";
 import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
+import { GroupSwitcher } from "@/components/group-switcher";
 import { TickerNumber, Sparkline, TierBadge } from "@/components/animations";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
@@ -51,6 +52,8 @@ export default async function GroupPage({ params, searchParams }: Props) {
   return (
     <main>
       <OfflineRetry />
+
+      <GroupSwitcher currentSlug={slug} userId={session.userId} />
 
       <header className="mb-6">
         <div className="flex items-start justify-between gap-3">
