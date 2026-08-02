@@ -79,6 +79,11 @@ export default async function GroupPage({ params, searchParams }: Props) {
         </LinkButton>
       </div>
 
+      <div className="mb-5 flex gap-3 text-[0.75rem] text-muted">
+        <Link href={`/g/${slug}/teams`} className="hover:text-text">Teams</Link>
+        <Link href={`/g/${slug}/seasons`} className="hover:text-text">Seasons</Link>
+      </div>
+
       {isSpectator ? (
         <Card className="mb-5 text-center text-sm text-muted">
           You&apos;re a spectator — follow along, but you can&apos;t log games.
