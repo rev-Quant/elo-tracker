@@ -9,6 +9,7 @@
  * named constants purely so the values are greppable and assertable in tests.
  */
 import { ordinal as osOrdinal, rate as osRate, rating as osRating, predictWin } from "openskill";
+export { osOrdinal, osRate, osRating, predictWin };
 import type { Rating } from "openskill";
 
 export type { Rating };
