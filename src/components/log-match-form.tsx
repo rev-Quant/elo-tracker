@@ -190,7 +190,8 @@ export function LogMatchForm({
 
   async function submit() {
     setPending(true);
-    setError(null);`r`n    const body =
+    setError(null);
+    const body =
         effectiveMode === "teams"
           ? {
               gameId,
@@ -211,7 +212,8 @@ export function LogMatchForm({
               idempotencyKey: crypto.randomUUID(),
             };
 
-          try {`r`n      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
+    try {
+      const payload = await api.post<LoggedResult>(`/api/groups/${slug}/matches`, body);
       setResult(payload);
       router.refresh();
     } catch (err) {
