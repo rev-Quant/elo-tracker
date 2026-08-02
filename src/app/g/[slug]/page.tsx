@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { VoidButton } from "@/components/match-actions";
 import { OfflineRetry } from "@/components/offline-retry";
-import { Card, EmptyState, LinkButton, SectionTitle, WinRateBar } from "@/components/ui";
+import { RecentMatches } from "@/components/recent-matches";
+import { Card, EmptyState, LinkButton, WinRateBar } from "@/components/ui";
 import { getSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
 import { can } from "@/lib/permissions";
@@ -140,7 +140,13 @@ export default async function GroupPage({ params, searchParams }: Props) {
             </h2>
           </div>
           <ul className="divide-y divide-border">
-            {standings.map((entry) => (
+              {standings.map((entry) => {
+                let arrow: string | null = null;
+                if (entry.previousRank !== null) {
+                  if (entry.rank < entry.previousRank) arrow = "▲";
+                  else if (entry.rank > entry.previousRank) arrow = "▼";
+                }
+                return (
               <li key={entry.userId}>
                 <Link
                   href={`/g/${slug}/u/${entry.userId}`}
@@ -148,6 +154,11 @@ export default async function GroupPage({ params, searchParams }: Props) {
                 >
                   <span className="w-6 shrink-0 text-center text-[0.8125rem] font-semibold tabular-nums text-muted-dim">
                     {entry.rank}
+                    {arrow ? (
+                      <span className={`ml-0.5 text-[0.625rem] ${arrow === "▲" ? "text-up" : "text-down"}`}>
+                        {arrow}
+                      </span>
+                    ) : null}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.875rem] font-medium">{entry.displayName}</p>
@@ -160,39 +171,14 @@ export default async function GroupPage({ params, searchParams }: Props) {
                   </span>
                 </Link>
               </li>
-            ))}
+                );
+              })}
           </ul>
         </Card>
       )}
 
       {recent.matches.length > 0 ? (
-        <section className="mt-6">
-          <SectionTitle>Recent matches</SectionTitle>
-          <Card noPadding>
-            <ul className="divide-y divide-border">
-              {recent.matches.map((match) => {
-                const winners = match.participants.filter((p) => p.finalRank === 1);
-                return (
-                  <li key={match.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[0.8125rem] font-medium">
-                        {winners.map((w) => w.displayName).join(" & ")} won
-                      </p>
-                      <p className="mt-0.5 truncate text-[0.6875rem] text-muted-dim">
-                        {match.game.name}
-                        {match.matchType === "casual" ? " · casual" : ""}
-                      </p>
-                    </div>
-                    <time dateTime={match.playedAt.toISOString()} className="shrink-0 text-[0.6875rem] tabular-nums text-muted-dim">
-                      {match.playedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                    </time>
-                    {can(role, "void_matches") ? <VoidButton matchId={match.id} /> : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-        </section>
+        <RecentMatches matches={recent.matches} canVoid={can(role, "void_matches")} />
       ) : null}
     </main>
   );

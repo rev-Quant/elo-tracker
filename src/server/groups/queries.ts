@@ -1,11 +1,12 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { type Queryable, db as defaultDb } from "@/db";
-import { currentRatings, games, matches, users } from "@/db/schema";
+import { currentRatings, games, matches, ratingSnapshots, users } from "@/db/schema";
 
 /** Leaderboard and group dashboard reads. Spec §5, §7. */
 
 export interface LeaderboardEntry {
   rank: number;
+  previousRank: number | null;
   userId: string;
   displayName: string;
   avatarUrl: string | null;
@@ -53,11 +54,59 @@ export async function leaderboard(
 
   let rank = 0;
   let previous: number | null = null;
-  return rows.map((row, index) => {
+  const entries = rows.map((row, index) => {
     if (previous === null || row.displayRating !== previous) rank = index + 1;
     previous = row.displayRating;
-    return { rank, ...row };
+    return { rank, previousRank: null as number | null, ...row };
   });
+
+  const userIds = entries.map((e) => e.userId);
+  if (userIds.length > 0) {
+    const prevSnapshots = await db
+      .select({
+        userId: ratingSnapshots.userId,
+        prevRating: ratingSnapshots.displayAfter,
+      })
+      .from(ratingSnapshots)
+      .where(
+        and(
+          eq(ratingSnapshots.groupId, groupId),
+          eq(ratingSnapshots.gameId, gameId),
+          eq(ratingSnapshots.ratingPool, "competitive"),
+          sql`${ratingSnapshots.createdAt} <= now() - interval '7 days'`,
+        ),
+      )
+      .orderBy(desc(ratingSnapshots.createdAt));
+
+    const prevRatingMap = new Map<string, number>();
+    for (const s of prevSnapshots) {
+      if (!prevRatingMap.has(s.userId)) {
+        prevRatingMap.set(s.userId, s.prevRating);
+      }
+    }
+
+    if (prevRatingMap.size > 0) {
+      const prevSorted = [...prevRatingMap.entries()]
+        .sort((a, b) => b[1] - a[1]);
+
+      let prevRank = 0;
+      let prevVal: number | null = null;
+      const prevRankMap = new Map<string, number>();
+      prevSorted.forEach(([uid], i) => {
+        const val = prevRatingMap.get(uid)!;
+        if (prevVal === null || val !== prevVal) prevRank = i + 1;
+        prevVal = val;
+        prevRankMap.set(uid, prevRank);
+      });
+
+      for (const entry of entries) {
+        const pr = prevRankMap.get(entry.userId);
+        if (pr !== undefined) entry.previousRank = pr;
+      }
+    }
+  }
+
+  return entries;
 }
 
 export interface GroupGame {

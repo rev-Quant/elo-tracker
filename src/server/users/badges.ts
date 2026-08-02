@@ -10,9 +10,7 @@ import { currentRatings, matchParticipants, matches } from "@/db/schema";
  * sync, for a feature that's purely decorative. Recomputing at profile-read
  * time is a few cheap indexed queries and can never drift.
  *
- * NOT IMPLEMENTED: "Perfect Week" (needs daily-login tracking, not modelled)
- * and "Comeback Kid" (needs raw_score, which no seeded game uses). Both are
- * flagged rather than faked.
+ * NOT IMPLEMENTED: "Comeback Kid" (needs raw_score, which no seeded game uses).
  */
 
 export interface Badge {
@@ -28,6 +26,7 @@ const CATALOG: Record<string, Omit<Badge, "id">> = {
   giant_slayer: { emoji: "🎯", label: "Giant Slayer" },
   iron_man: { emoji: "💪", label: "Iron Man" },
   century: { emoji: "💯", label: "Century" },
+  perfect_week: { emoji: "📅", label: "Perfect Week" },
 };
 
 export async function computeBadges(
@@ -95,6 +94,21 @@ export async function computeBadges(
     )
     .limit(1);
   if (slain) earned.add("giant_slayer");
+
+  // Perfect Week: logged at least 1 game on each of the last 7 distinct calendar days
+  const [perfectWeek] = await db
+    .select({ n: sql<number>`count(distinct to_char(${matches.playedAt} at time zone 'UTC', 'YYYY-MM-DD'))::int` })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.id, matchParticipants.matchId))
+    .where(
+      and(
+        eq(matchParticipants.userId, userId),
+        eq(matches.groupId, groupId),
+        eq(matches.status, "confirmed"),
+        sql`${matches.playedAt} >= now() - interval '7 days'`,
+      ),
+    );
+  if (perfectWeek && perfectWeek.n >= 7) earned.add("perfect_week");
 
   return [...earned].map((id) => ({ id, ...CATALOG[id] }));
 }
