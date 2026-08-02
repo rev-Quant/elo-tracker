@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc } from "drizzle-orm";
 import { currentRatings } from "@/db/schema";
 import { Card, PageTitle, EmptyState } from "@/components/ui";
 
