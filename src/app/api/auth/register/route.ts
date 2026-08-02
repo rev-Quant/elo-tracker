@@ -1,3 +1,4 @@
+import { startSession } from "@/lib/auth/session";
 import { handler, json, parseJson } from "@/lib/http";
 import { check } from "@/lib/rate-limit";
 import { TooManyRequestsError } from "@/lib/errors";
