@@ -35,5 +35,4 @@ export async function sendPush(
   }
 }
 
-export { VAPID_PUBLIC };
 export const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
