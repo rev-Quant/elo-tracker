@@ -24,6 +24,17 @@ export default async function RoundupPage({ params }: { params: Promise<{ slug: 
         {m.group.name}
       </Link>
       <PageTitle sub={`Last 7 days · ${report.totalMatches} matches`}>Weekly report</PageTitle>
+      {report.relegated ? (
+        <Card className="mb-4 border-down/20 bg-down/5">
+          <p className="text-[0.8125rem] font-medium text-down">
+            🪂 Relegated: {report.relegated.displayName}
+          </p>
+          <p className="mt-0.5 text-[0.6875rem] text-muted-dim">
+            Bottom of the leaderboard. Time to climb out.
+          </p>
+        </Card>
+      ) : null}
+
       {report.totalMatches === 0 ? (
         <EmptyState icon="📋" title="No games this week" body="Log a match to see it show up here." />
       ) : (

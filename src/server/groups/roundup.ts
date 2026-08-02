@@ -1,6 +1,7 @@
 import { aliasedTable, and, desc, eq, gte, sql } from "drizzle-orm";
 import { type Queryable, db as defaultDb } from "@/db";
 import { groupMembers, matchParticipants, matches, ratingSnapshots, users } from "@/db/schema";
+import { findBottomPlayer } from "@/server/nemesis";
 
 /**
  * Weekly roundup. Spec §5 — computed on read rather than a scheduled job.
@@ -23,6 +24,7 @@ export interface Roundup {
   biggestGain: { userId: string; displayName: string; delta: number; newRating: number } | null;
   biggestUpset: { winnerId: string; winnerName: string; loserId: string; loserName: string; gap: number } | null;
   quiet: { userId: string; displayName: string }[];
+  relegated: { userId: string; displayName: string } | null;
 }
 
 export async function roundup(
@@ -116,6 +118,8 @@ export async function roundup(
     .where(eq(groupMembers.groupId, groupId));
   const quiet = members.filter((m) => !activeIds.has(m.userId));
 
+  const bottom = await findBottomPlayer(groupId, db);
+
   return {
     since,
     totalMatches,
@@ -123,5 +127,6 @@ export async function roundup(
     biggestGain: gains[0] ? { ...gains[0], delta: Math.round(gains[0].delta) } : null,
     biggestUpset: upsets[0] ? { ...upsets[0], gap: Math.round(upsets[0].gap) } : null,
     quiet,
+    relegated: bottom ? { userId: bottom.userId, displayName: bottom.displayName } : null,
   };
 }
